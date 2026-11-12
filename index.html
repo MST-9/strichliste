@@ -35,6 +35,8 @@ button{cursor:pointer}
 .seg{display:flex;background:#dedcc9;border-radius:10px;padding:3px;gap:3px;margin:0 0 10px}
 .seg button{flex:1;border:0;background:none;border-radius:8px;padding:7px 6px;font-size:14px}
 .seg button.on{background:#fff;font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.15)}
+input[type=date]{display:block;min-width:0;max-width:100%;height:44px;-webkit-appearance:none;appearance:none;text-align:left}
+input[type=date]::-webkit-date-and-time-value{text-align:left}
 input[type=text],input[type=number],input[type=date],select,textarea{width:100%;border:1px solid var(--line);border-radius:10px;padding:9px 11px;background:#fff}
 .row{display:flex;align-items:center;gap:10px}
 .grow{flex:1;min-width:0}
@@ -58,7 +60,7 @@ input[type=text],input[type=number],input[type=date],select,textarea{width:100%;
 .stp button.plus{background:var(--acc);border-color:var(--acc);color:#fff}
 .stp b{min-width:22px;text-align:center;font-variant-numeric:tabular-nums}
 .mtx{overflow-x:auto}
-.mtx table{border-collapse:collapse;font-size:14px}
+.mtx table{border-collapse:collapse;font-size:14px;width:100%}
 .mtx th,.mtx td{border:1px solid var(--line);padding:3px 4px;background:#fff;text-align:center}
 .mtx td:first-child,.mtx th:first-child{position:sticky;left:0;text-align:left;background:#f3f1e6;white-space:nowrap;padding:3px 8px}
 .mtx input{width:54px;padding:6px;text-align:center}
@@ -134,7 +136,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.0.7';
+var KEY='strichliste.v3', VERSION='1.0.8';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -276,7 +278,7 @@ function renderErf(){
     $('#v-erf').innerHTML=h;renderPlist();
   }else{
     var ps=activePeople(),pr=activeProds();
-    h+='<div class="card"><div class="row"><div class="grow"><b>Datum der Buchung</b><div class="small mute">Anzahl Striche je Person und Produkt eintragen, dann buchen.</div></div><div style="width:150px"><input type="date" id="mDate" value="'+dayKey(Date.now())+'"></div></div></div>';
+    h+='<div class="card"><b>Datum der Buchung</b><div class="small mute" style="margin:2px 0 8px">Anzahl Striche je Person und Produkt eintragen, dann buchen.</div><input type="date" id="mDate" value="'+dayKey(Date.now())+'"></div>';
     h+='<div class="mtx"><table><thead><tr><th>Name</th>'+pr.map(function(p){return '<th>'+p.icon+'<br><span class="small">'+esc(p.name)+'</span></th>'}).join('')+'</tr></thead><tbody>'+
       ps.map(function(p){return '<tr><td>'+esc(lbl(p))+'</td>'+pr.map(function(x){return '<td><input type="number" inputmode="numeric" min="0" data-p="'+p.id+'" data-pr="'+x.id+'"></td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>';
     h+='<div style="height:12px"></div><button class="btn pri" data-act="mbook" style="width:100%;padding:12px">Alle buchen</button>';
