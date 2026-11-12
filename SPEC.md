@@ -46,8 +46,8 @@ Regeln:
 
 ### Druck
 - Liste 1 = Produkte mit `list = 'A'` (Standard: Kaffee, Twix), Liste 2 = alle anderen aktiven.
-- Zeilen: aktive Personen alphabetisch + konfigurierbare Leerzeilen. Spalten: ein breites Feld je Produkt (Preis im Header) + schmale Spalte „bezahlt“.
-- Eigene Seite pro Liste, Kopfzeile wiederholt sich bei Seitenumbruch, A4 quer/hoch wählbar, Titel/Zeitraum frei.
+- Zeilen: aktive Personen alphabetisch + konfigurierbare Leerzeilen. Spalten: ein breites Feld je Produkt (Preis im Header) + Spalte „Notiz“ am Ende.
+- Eigene Seite pro Liste, Kopfzeile wiederholt sich bei Seitenumbruch, A4 hoch (Standard) oder quer wählbar, Titel/Zeitraum frei.
 - Umsetzung über Print-CSS (`@media print`, `@page`), keine PDF-Bibliothek in v1. Zeilenhöhe in mm.
 
 ### Scoreboard
