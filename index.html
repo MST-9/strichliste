@@ -134,7 +134,7 @@ table.st .pd{width:15mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.0.1';
+var KEY='strichliste.v3', VERSION='1.0.2';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -251,7 +251,7 @@ function backupNote(){
 
 function renderErf(){
   if(!S.people.length){
-    $('#v-erf').innerHTML='<div class="card"><h2>Willkommen</h2><p class="small" style="margin:0 0 10px">Noch keine Personen angelegt. Ablauf: Produkte und Preise anlegen, Personen eintragen, dann erfassen. Alle Daten bleiben auf diesem Gerät.</p><div class="chips"><button class="btn pri" data-act="tab" data-v="stamm">Personen &amp; Produkte anlegen</button><button class="btn" data-act="seedProducts">Beispielprodukte anlegen</button><button class="btn" data-act="loadDemo">Demo-Daten laden</button></div><p class="small mute" style="margin:10px 0 0">Beispielprodukte haben Platzhalterpreise – unter Verwalten anpassen. Demo-Daten kannst du jederzeit mit „Alles leeren“ löschen.</p></div>';
+    $('#v-erf').innerHTML='<div class="card"><h2>Willkommen</h2><p class="small" style="margin:0 0 10px">Noch keine Personen angelegt. Ablauf: Produkte und Preise anlegen, Personen eintragen, dann erfassen. Alle Daten bleiben auf diesem Gerät.</p><div class="chips"><button class="btn pri" data-act="tab" data-v="stamm">Personen &amp; Produkte anlegen</button><button class="btn" data-act="seedProducts">Beispielprodukte anlegen</button><button class="btn" data-act="loadDemo">Demo-Daten laden</button><button class="btn" data-act="pickFile">Backup-Datei laden</button></div><input type="file" id="fileIn" accept=".json,application/json,text/plain" hidden><p class="small mute" style="margin:10px 0 0">Beispielprodukte haben Platzhalterpreise – unter Verwalten anpassen. Demo-Daten kannst du jederzeit mit „Alles leeren“ löschen.</p></div>';
     return;
   }
   var h=backupNote()+seg('mode','mode',[['single','Einzeln'],['matrix','Matrix (Papierliste nachtragen)']]);
@@ -370,7 +370,7 @@ function renderStamm(){
     }).join('')+
     '<div class="row" style="margin-top:8px"><input type="text" id="newPr" placeholder="Neues Produkt"><input type="number" id="newPrice" step="0.05" min="0" placeholder="€" style="width:90px"><button class="btn pri" data-act="addPr">+</button></div>'+
     '<p class="small mute" style="margin:8px 0 0">Preisänderungen gelten nur für neue Striche – alte Buchungen behalten ihren Preis.</p></div>';
-  h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="import">Import</button><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
+  h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="pickFile">Backup-Datei laden</button><button class="btn" data-act="import">Import (Text)</button><input type="file" id="fileIn" accept=".json,application/json,text/plain" hidden><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm" data-act="copyJson">Kopieren</button><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
     '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · Daten nur auf diesem Gerät</p></div>';
   $('#v-stamm').innerHTML=h;
@@ -436,6 +436,10 @@ var A={
     if(!n||!(c>=0)){toast('Name und Preis angeben');return}
     S.products.push({id:'pr_'+uid(),name:n,price:c,list:'B',icon:'🛒',active:true});save();render();
   },
+  pickFile:function(){
+    if((S.people.length||S.entries.length)&&!twice('pickfile','Ersetzt alle aktuellen Daten – nochmal tippen zum Fortfahren'))return;
+    var f=$('#fileIn');if(f){f.value='';f.click()}
+  },
   backup:backupNow,
   seedProducts:function(){
     [['Kaffee',50,'A','☕'],['Twix',70,'A','🍫'],['Mineral',100,'B','💧'],['Cola',120,'B','🥤'],['Bier',150,'B','🍺'],['Pizza',350,'B','🍕']].forEach(function(x){S.products.push({id:'pr_'+uid(),name:x[0],price:x[1],list:x[2],icon:x[3],active:true})});
@@ -458,6 +462,13 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('input',function(e){if(e.target.id==='q'){ui.q=e.target.value;renderPlist()}});
 document.addEventListener('change',function(e){
+  if(e.target.id==='fileIn'){
+    var file=e.target.files&&e.target.files[0];if(!file)return;
+    var rd=new FileReader();
+    rd.onload=function(){try{var o=JSON.parse(rd.result);if(!o.people||!o.products||!o.entries)throw 0;S=normalize(o);save();ui.tab='erf';ui.exp=false;render();toast('Backup geladen: '+S.people.length+' Personen, '+S.entries.length+' Buchungen')}catch(err){toast('Datei ist kein gültiges Backup')}};
+    rd.onerror=function(){toast('Datei nicht lesbar')};
+    rd.readAsText(file);return;
+  }
   var t=e.target,c=t.dataset.chg;if(!c)return;var v=t.value;
   if(c==='title')S.settings.title=v;
   else if(c==='spare')S.settings.spare=Math.max(0,Math.min(20,parseInt(v,10)||0));
