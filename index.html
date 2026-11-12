@@ -134,7 +134,7 @@ table.st .pd{width:15mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.0.2';
+var KEY='strichliste.v3', VERSION='1.0.3';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -347,7 +347,7 @@ function renderPrint(){
     (inFrame?'<div class="note">⚠️ In dieser Vorschau (Sandbox) ist der Druckdialog gesperrt. Zum echten Drucken die HTML-Datei lokal im Browser öffnen – das Layout unten ist exakt das, was gedruckt wird.</div>':'')+
     '<div class="card"><div class="row" style="gap:8px"><div class="grow"><label class="small mute">Titel / Zeitraum</label><input type="text" data-chg="title" value="'+esc(S.settings.title)+'"></div><div style="width:100px"><label class="small mute">Leerzeilen</label><input type="number" min="0" max="20" data-chg="spare" value="'+esc(S.settings.spare)+'"></div></div>'+
     '<div style="height:8px"></div><div class="row"><div class="grow"><label class="small mute">Format</label><select data-chg="orient"><option value="landscape"'+sel('orient','landscape')+'>A4 quer</option><option value="portrait"'+sel('orient','portrait')+'>A4 hoch</option></select></div><div class="grow"><label class="small mute">Sortierung</label><select data-chg="sort"><option value="name"'+sel('sort','name')+'>Nachname A–Z</option><option value="rank"'+sel('sort','rank')+'>Dienstgrad</option></select></div></div>'+
-    '<button class="btn pri" data-act="print" style="width:100%;margin-top:10px;padding:11px">🖨️ Drucken</button>'+
+    '<button class="btn pri" data-act="pdf" style="width:100%;margin-top:10px;padding:11px">📄 PDF erstellen (iPhone: Teilen → Drucken)</button><button class="btn" data-act="print" style="width:100%;margin-top:8px;padding:10px">🖨️ Direkt drucken (Computer)</button>'+
     '<p class="small mute" style="margin:8px 0 0">Liste 1 = Produkte mit Zuordnung „Liste 1“ (Standard: Kaffee, Twix). Liste 2 = Rest. Zuordnung unter Verwalten.</p></div></div>'+
     '<div class="prevwrap">'+sheetHtml('Kaffee & Twix',a,1)+sheetHtml('Getränke & Sonstiges',b,2)+'</div>';
 }
@@ -403,6 +403,70 @@ function backupNow(){
   dl();
 }
 
+/* ---------- PDF ohne Bibliothek (für iPhone: Teilen → Drucken) ---------- */
+var WIN={'€':128,'–':150,'„':132,'“':147,'”':148,'’':146,'…':133};
+function pdfStr(t){var o='';for(var i=0;i<t.length;i++){var c=t[i],n=t.charCodeAt(i);if(WIN[c]!==undefined)n=WIN[c];else if(n>255)n=63;if(n===40||n===41||n===92)o+='\\';o+=String.fromCharCode(n)}return '('+o+')'}
+var _cv=null;
+function tw(t,sz,b){try{_cv=_cv||document.createElement('canvas').getContext('2d');_cv.font=(b?'bold ':'')+sz+'px Helvetica, Arial, sans-serif';return _cv.measureText(t).width}catch(e){return t.length*sz*.52}}
+function fit(t,w,sz,b){if(tw(t,sz,b)<=w)return t;while(t.length>1&&tw(t+'...',sz,b)>w)t=t.slice(0,-1);return t+'...'}
+function buildPdf(){
+  var land=S.settings.orient==='landscape',W=land?841.89:595.28,H=land?595.28:841.89,M=28;
+  var rows=activePeople().map(lbl),sp=Math.max(0,parseInt(S.settings.spare,10)||0);for(var i=0;i<sp;i++)rows.push('');
+  var prods=activeProds();
+  var lists=[['Kaffee & Twix',prods.filter(function(p){return p.list==='A'}),1],['Getränke & Sonstiges',prods.filter(function(p){return p.list==='B'}),2]].filter(function(l){return l[1].length});
+  var NAMEW=Math.min(150,W*.26),PAYW=44,HEADH=34,ROWH=28.3,YTOP=H-M-26,pages=[];
+  var f2=function(n){return n.toFixed(2)};
+  var txt=function(x,y,t,sz,b){return 'BT /F'+(b?2:1)+' '+sz+' Tf '+f2(x)+' '+f2(y)+' Td '+pdfStr(t)+' Tj ET\n'};
+  var ctr=function(x,w,y,t,sz,b){return txt(x+(w-tw(t,sz,b))/2,y,t,sz,b)};
+  var box=function(x,y,w,h,fill){return fill?'0.92 g '+f2(x)+' '+f2(y)+' '+f2(w)+' '+f2(h)+' re f 0 g\n':f2(x)+' '+f2(y)+' '+f2(w)+' '+f2(h)+' re S\n'};
+  var date=new Date().toLocaleDateString('de-AT');
+  lists.forEach(function(L){
+    var ps=L[1],colW=(W-2*M-NAMEW-PAYW)/ps.length,idx=0,first=true;
+    while(first||idx<rows.length){
+      var c='0.6 w 0 G\n',y=YTOP;
+      c+=txt(M,H-M-12,'Liste '+L[2]+' · '+L[0]+(first?'':' (Forts.)'),14,true);
+      var ttl=fit(S.settings.title||'',W/2,10,false);c+=txt(W-M-tw(ttl,10,false),H-M-12,ttl,10,false);
+      first=false;
+      c+=box(M,y-HEADH,W-2*M,HEADH,true);
+      c+=box(M,y-HEADH,NAMEW,HEADH)+txt(M+4,y-HEADH/2-3,'Dienstgrad Name',9,true);
+      ps.forEach(function(p,k){var x=M+NAMEW+k*colW;c+=box(x,y-HEADH,colW,HEADH)+ctr(x,colW,y-14,fit(p.name,colW-6,9,true),9,true)+ctr(x,colW,y-26,money(p.price),7.5,false)});
+      var px=M+NAMEW+ps.length*colW;c+=box(px,y-HEADH,PAYW,HEADH)+ctr(px,PAYW,y-HEADH/2-3,'bezahlt',8,true);
+      y-=HEADH;
+      while(idx<rows.length&&y-ROWH>=M+14){
+        c+=box(M,y-ROWH,NAMEW,ROWH)+(rows[idx]?txt(M+4,y-ROWH/2-3.5,fit(rows[idx],NAMEW-8,10,true),10,true):'');
+        ps.forEach(function(p,k){c+=box(M+NAMEW+k*colW,y-ROWH,colW,ROWH)});
+        c+=box(px,y-ROWH,PAYW,ROWH);y-=ROWH;idx++;
+      }
+      c+=txt(M,M-2,'Pro Konsum einen Strich. Gedruckt am '+date,8,false);
+      pages.push(c);
+    }
+  });
+  if(!pages.length)pages.push('BT /F1 12 Tf 40 '+f2(H-60)+' Td '+pdfStr('Keine aktiven Produkte oder Personen.')+' Tj ET\n');
+  pages=pages.map(function(c,i){return c+txt(W-M-40,M-2,'Seite '+(i+1)+'/'+pages.length,8,false)});
+  var obj=[null,'<< /Type /Catalog /Pages 2 0 R >>',null,'<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>','<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>'];
+  var kids=[];
+  pages.forEach(function(c,i){var cid=5+2*i,pid=6+2*i;obj[cid]='<< /Length '+c.length+' >>\nstream\n'+c+'endstream';obj[pid]='<< /Type /Page /Parent 2 0 R /MediaBox [0 0 '+f2(W)+' '+f2(H)+'] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents '+cid+' 0 R >>';kids.push(pid+' 0 R')});
+  obj[2]='<< /Type /Pages /Kids ['+kids.join(' ')+'] /Count '+pages.length+' >>';
+  var out='%PDF-1.4\n',off=[];
+  for(var k=1;k<obj.length;k++){off[k]=out.length;out+=k+' 0 obj\n'+obj[k]+'\nendobj\n'}
+  var xr=out.length;out+='xref\n0 '+obj.length+'\n0000000000 65535 f \n';
+  for(k=1;k<obj.length;k++)out+=String(off[k]).padStart(10,'0')+' 00000 n \n';
+  out+='trailer\n<< /Size '+obj.length+' /Root 1 0 R >>\nstartxref\n'+xr+'\n%%EOF';
+  var u=new Uint8Array(out.length);for(k=0;k<out.length;k++)u[k]=out.charCodeAt(k)&255;
+  return u;
+}
+function pdfShare(){
+  if(!S.people.length){toast('Keine Personen angelegt');return}
+  var name='strichliste-'+dayKey(Date.now())+'.pdf',bytes=buildPdf();
+  if(inFrame){toast('Vorschau: PDF-Export gesperrt – App lokal öffnen');return}
+  try{
+    var f=new File([bytes],name,{type:'application/pdf'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:name}).catch(function(){});return}
+  }catch(e){}
+  try{var url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()}
+  catch(e){toast('PDF konnte nicht erstellt werden')}
+}
+
 /* ---------- Events ---------- */
 var A={
   tab:function(b){ui.tab=b.dataset.v;ui.sheet=null;render();try{window.scrollTo(0,0)}catch(e){}},
@@ -427,6 +491,7 @@ var A={
   },
   delPay:function(b){if(!twice('dp'+b.dataset.id))return;S.payments=S.payments.filter(function(p){return p.id!==b.dataset.id});save();render()},
   print:function(){try{window.print()}catch(e){}},
+  pdf:pdfShare,
   togP:function(b){var p=person(b.dataset.id);p.active=!p.active;save();render()},
   togPr:function(b){var p=prod(b.dataset.id);p.active=!p.active;save();render()},
   delP:function(b){if(!twice('dl'+b.dataset.id))return;S.people=S.people.filter(function(p){return p.id!==b.dataset.id});save();render()},
@@ -506,7 +571,7 @@ if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!inFrame){
     reg.addEventListener('updatefound',function(){var nw=reg.installing;if(nw)nw.addEventListener('statechange',function(){if(nw.state==='installed'&&navigator.serviceWorker.controller)toast('Update geladen – App einmal schließen und neu öffnen')})});
   }).catch(function(){});
 }
-window.__app={get S(){return S},A:A,ui:ui,render:render,lbl:lbl};
+window.__app={get S(){return S},A:A,ui:ui,render:render,lbl:lbl,buildPdf:buildPdf};
 })();
 </script>
 </body>
