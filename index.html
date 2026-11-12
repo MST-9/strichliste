@@ -136,7 +136,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.0.8';
+var KEY='strichliste.v3', VERSION='1.0.9';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -282,7 +282,6 @@ function renderErf(){
     h+='<div class="mtx"><table><thead><tr><th>Name</th>'+pr.map(function(p){return '<th>'+p.icon+'<br><span class="small">'+esc(p.name)+'</span></th>'}).join('')+'</tr></thead><tbody>'+
       ps.map(function(p){return '<tr><td>'+esc(lbl(p))+'</td>'+pr.map(function(x){return '<td><input type="number" inputmode="numeric" min="0" data-p="'+p.id+'" data-pr="'+x.id+'"></td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>';
     h+='<div style="height:12px"></div><button class="btn pri" data-act="mbook" style="width:100%;padding:12px">Alle buchen</button>';
-    h+='<div class="note" style="margin-top:12px">📷 <b>Später:</b> Foto der Papierliste hochladen → Zahlen werden vorausgefüllt, du kontrollierst und buchst. Dieselbe Matrix, nur automatisch befüllt.</div>';
     $('#v-erf').innerHTML=h;
   }
 }

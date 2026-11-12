@@ -89,7 +89,9 @@ Grenzen des lokalen Ansatzes (bewusst akzeptiert):
 - Drucken vom Handy braucht einen erreichbaren Drucker. Praktisch: als PDF speichern/teilen und am Büro-PC drucken.
 - Für Mehrgeräte/Selbsterfassung später: kleines Backend (Node + SQLite) im privaten Netz, Zugriff nur im LAN.
 
-## Bilderkennung (Phase 3, optional)
+## Bilderkennung (verworfen)
+Entscheidung: nicht umsetzen. Nachtragen läuft über die Matrix, alles bleibt lokal. Die folgenden Überlegungen bleiben als Hintergrund stehen.
+
 - Ziel: Foto der ausgefüllten Papierliste → vorausgefüllte Matrix. Immer manuelle Prüfung vor dem Buchen.
 - Strichzählen ist fehleranfällig (Bündel, Streichungen, Handschrift). Realistisch: Tabellenstruktur durch festes Druck-Layout (Zellen bekannt, evtl. QR/Eckmarker auf dem Ausdruck zur Ausrichtung) + Vision-Modell pro Zelle.
 - Datenschutz: Cloud-Vision heißt, dass Namen/Konsum das Gerät verlassen. Entweder anonymisierte Zellen (nur Zahlen) oder lokales Modell.
