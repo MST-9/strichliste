@@ -134,7 +134,7 @@ table.st .pd{width:15mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.0.3';
+var KEY='strichliste.v3', VERSION='1.0.4';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -348,7 +348,7 @@ function renderPrint(){
     '<div class="card"><div class="row" style="gap:8px"><div class="grow"><label class="small mute">Titel / Zeitraum</label><input type="text" data-chg="title" value="'+esc(S.settings.title)+'"></div><div style="width:100px"><label class="small mute">Leerzeilen</label><input type="number" min="0" max="20" data-chg="spare" value="'+esc(S.settings.spare)+'"></div></div>'+
     '<div style="height:8px"></div><div class="row"><div class="grow"><label class="small mute">Format</label><select data-chg="orient"><option value="landscape"'+sel('orient','landscape')+'>A4 quer</option><option value="portrait"'+sel('orient','portrait')+'>A4 hoch</option></select></div><div class="grow"><label class="small mute">Sortierung</label><select data-chg="sort"><option value="name"'+sel('sort','name')+'>Nachname A–Z</option><option value="rank"'+sel('sort','rank')+'>Dienstgrad</option></select></div></div>'+
     '<button class="btn pri" data-act="pdf" style="width:100%;margin-top:10px;padding:11px">📄 PDF erstellen (iPhone: Teilen → Drucken)</button><button class="btn" data-act="print" style="width:100%;margin-top:8px;padding:10px">🖨️ Direkt drucken (Computer)</button>'+
-    '<p class="small mute" style="margin:8px 0 0">Liste 1 = Produkte mit Zuordnung „Liste 1“ (Standard: Kaffee, Twix). Liste 2 = Rest. Zuordnung unter Verwalten.</p></div></div>'+
+    '<p class="small mute" style="margin:8px 0 0">App-Version '+VERSION+'. Liste 1 = Produkte mit Zuordnung „Liste 1“ (Standard: Kaffee, Twix). Liste 2 = Rest. Zuordnung unter Verwalten.</p></div></div>'+
     '<div class="prevwrap">'+sheetHtml('Kaffee & Twix',a,1)+sheetHtml('Getränke & Sonstiges',b,2)+'</div>';
 }
 
@@ -457,14 +457,22 @@ function buildPdf(){
 }
 function pdfShare(){
   if(!S.people.length){toast('Keine Personen angelegt');return}
-  var name='strichliste-'+dayKey(Date.now())+'.pdf',bytes=buildPdf();
   if(inFrame){toast('Vorschau: PDF-Export gesperrt – App lokal öffnen');return}
-  try{
-    var f=new File([bytes],name,{type:'application/pdf'});
-    if(navigator.canShare&&navigator.canShare({files:[f]})){navigator.share({files:[f],title:name}).catch(function(){});return}
-  }catch(e){}
-  try{var url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));var a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove()}
-  catch(e){toast('PDF konnte nicht erstellt werden')}
+  var name='strichliste-'+dayKey(Date.now())+'.pdf',bytes,f;
+  try{bytes=buildPdf();f=new File([bytes],name,{type:'application/pdf'})}catch(e){toast('PDF-Fehler: '+(e&&e.message||e));return}
+  function openIt(){
+    try{
+      var url=URL.createObjectURL(new Blob([bytes],{type:'application/pdf'}));
+      var w=window.open(url,'_blank');
+      if(!w){var a=document.createElement('a');a.href=url;a.target='_blank';a.download=name;document.body.appendChild(a);a.click();a.remove()}
+      toast('PDF geöffnet – dort Teilen → Drucken');
+    }catch(e){toast('PDF konnte nicht geöffnet werden: '+(e&&e.name||e))}
+  }
+  var can=false;try{can=!!(navigator.canShare&&navigator.canShare({files:[f]}))}catch(e){}
+  if(can){
+    toast('PDF wird geteilt…');
+    navigator.share({files:[f],title:name}).then(function(){toast('Fertig')},function(err){if(err&&err.name==='AbortError')return;toast('Teilen fehlgeschlagen ('+(err&&err.name||'?')+') – öffne PDF');openIt()});
+  }else{toast('Teilen nicht verfügbar – öffne PDF');openIt()}
 }
 
 /* ---------- Events ---------- */
