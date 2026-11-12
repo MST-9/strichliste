@@ -24,7 +24,8 @@ Beträge immer als Integer-Cent. Datum als `YYYY-MM-DD` (lokal).
 - Entry (Konsum): `id, personId, productId, qty, price (Preis-Snapshot zum Buchungszeitpunkt), date`
 - Payment: `id, personId, amount (Cent), date`
 - Settings: `title (Zeitraum/Titel für Ausdruck), orient, spareRows, sort ('name'|'rank')`
-- Meta: `savedAt, lastExport`
+- Meta: `savedAt, lastExport, closedYears`
+- Verdichteter Eintrag (Jahresabschluss): Entry mit `arch: true, amt (Cent-Summe), d: 'YYYY-12-31'`; `val(e) = amt ?? qty × price`
 
 Dienstgrade (aufsteigend, Kürzel vor Verwendung gegen offizielle Liste prüfen): Rekr, Gfr, Kpl, Zgsfhr, Wm, OWm, StWm, OStWm, OStv, VzLt, Fhr (Fähnrich, nur Offiziersanwärter), Lt, Olt, Hptm, Mjr, Obstlt, Obst, Brig, GenMjr, GenLt, Gen. Sortierung: Nachname A–Z oder Dienstgrad absteigend.
 
@@ -49,6 +50,12 @@ Regeln:
 - Zeilen: aktive Personen alphabetisch + konfigurierbare Leerzeilen. Spalten: ein breites Feld je Produkt (Preis im Header) + Spalte „Notiz“ am Ende.
 - Eigene Seite pro Liste, Kopfzeile wiederholt sich bei Seitenumbruch, A4 hoch (Standard) oder quer wählbar, Titel/Zeitraum frei.
 - Umsetzung über Print-CSS (`@media print`, `@page`), keine PDF-Bibliothek in v1. Zeilenhöhe in mm.
+
+### Jahresabschluss
+- Verwalten → Jahresabschluss: verdichtet alle Einzelbuchungen eines vergangenen Jahres zu einem Eintrag je (Person, Produkt) mit Summe aus Menge und Betrag.
+- Salden, Abrechnung und Scoreboard (Jahr/Gesamt) bleiben unverändert. Vor dem Schreiben wird je Person geprüft, dass der Saldo identisch bleibt, sonst Abbruch ohne Änderung.
+- Schutz: nur Jahre vor dem aktuellen; nur wenn heute ein Backup gesichert wurde; Zwei-Tipp-Bestätigung. Zahlungen bleiben einzeln erhalten.
+- Verdichtete Einträge sind nicht einzeln löschbar und nehmen keine neuen Buchungen auf.
 
 ### Scoreboard
 - Zeitraum: Monat / Jahr / Gesamt. Metrik: Ausgaben € / Stückzahl.

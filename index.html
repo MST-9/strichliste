@@ -134,7 +134,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.0.6';
+var KEY='strichliste.v3', VERSION='1.0.7';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -145,7 +145,7 @@ var uid=function(){return Math.random().toString(36).slice(2,9)};
 var pad=function(n){return String(n).padStart(2,'0')};
 var dayKey=function(t){var d=new Date(t);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())};
 var fmtD=function(d){return d.slice(8)+'.'+d.slice(5,7)+'.'};
-var val=function(e){return e.q*e.price};
+var val=function(e){return e.amt!==undefined?e.amt:e.q*e.price};
 var S=null, ui={tab:'erf',mode:'single',q:'',sheet:null,per:'month',met:'eur',anon:false,exp:false};
 
 /* ---------- Dienstgrade (aufsteigend; Abkürzungen bitte gegenprüfen) ---------- */
@@ -233,9 +233,24 @@ function ranking(per,met){
 }
 function book(pid,prid,q,d){
   var pr=prod(prid);if(!pr||!q)return;
-  var e=S.entries.find(function(x){return x.p===pid&&x.pr===prid&&x.d===d});
+  var e=S.entries.find(function(x){return x.p===pid&&x.pr===prid&&x.d===d&&!x.arch});
   if(e){e.q+=q;if(e.q<=0)S.entries.splice(S.entries.indexOf(e),1)}
   else if(q>0)S.entries.push({id:uid(),p:pid,pr:prid,q:q,price:pr.price,d:d,t:new Date(d+'T12:00:00').getTime()});
+}
+function closableYears(){var cy=String(new Date().getFullYear()),ys={};S.entries.forEach(function(e){var y=e.d.slice(0,4);if(y<cy&&!e.arch)ys[y]=(ys[y]||0)+1});return Object.keys(ys).sort().map(function(y){return [y,ys[y]]})}
+function closeYear(y){
+  var before={};S.people.forEach(function(p){before[p.id]=openBal(p.id)});
+  var agg={},keep=[],n=0;
+  S.entries.forEach(function(e){
+    if(e.d.slice(0,4)===y){var k=e.p+'|'+e.pr,a=agg[k]||(agg[k]={p:e.p,pr:e.pr,q:0,amt:0});a.q+=e.q;a.amt+=val(e);n++}
+    else keep.push(e);
+  });
+  var arch=Object.keys(agg).map(function(k){var a=agg[k];return {id:uid(),p:a.p,pr:a.pr,q:a.q,price:a.q?Math.round(a.amt/a.q):0,amt:a.amt,d:y+'-12-31',t:new Date(y+'-12-31T12:00:00').getTime(),arch:true}});
+  var old=S.entries;S.entries=keep.concat(arch);
+  var ok=S.people.every(function(p){return openBal(p.id)===before[p.id]});
+  if(!ok){S.entries=old;return null}
+  S.meta.closedYears=(S.meta.closedYears||[]).filter(function(x){return x!==y}).concat([y]).sort();
+  return {n:n,m:arch.length};
 }
 var armed={k:'',t:0};
 function twice(k,msg){if(armed.k===k&&Date.now()-armed.t<3500){armed={k:'',t:0};return true}armed={k:k,t:Date.now()};toast(msg||'Nochmal tippen zum Bestätigen');return false}
@@ -290,7 +305,7 @@ function renderSheet(){
       var t=todayQty(p.id,x.id);
       return '<div class="prodrow"><span class="ic">'+x.icon+'</span><div class="grow"><b>'+esc(x.name)+'</b><div class="small mute">'+money(x.price)+'</div></div><div class="stp"><button data-act="dec" data-pr="'+x.id+'"'+(t?'':' disabled style="opacity:.35"')+'>−</button><b>'+t+'</b><button class="plus" data-act="inc" data-pr="'+x.id+'">+</button></div></div>';
     }).join('')+
-    '<div class="sec">Letzte Buchungen</div><div class="hist">'+(hist.map(function(e){var x=prod(e.pr)||{icon:'?',name:'?'};return '<div><span>'+x.icon+' '+esc(x.name)+' ×'+e.q+' · '+fmtD(e.d)+'</span><span>'+money(val(e))+' <button class="btn sm dng" data-act="delEntry" data-id="'+e.id+'">✕</button></span></div>'}).join('')||'<span class="mute">Noch nichts.</span>')+'</div>';
+    '<div class="sec">Letzte Buchungen</div><div class="hist">'+(hist.map(function(e){var x=prod(e.pr)||{icon:'?',name:'?'};return '<div><span>'+x.icon+' '+esc(x.name)+' ×'+e.q+' · '+(e.arch?'Jahr '+e.d.slice(0,4)+' (Summe)':fmtD(e.d))+'</span><span>'+money(val(e))+(e.arch?'':' <button class="btn sm dng" data-act="delEntry" data-id="'+e.id+'">✕</button>')+'</span></div>'}).join('')||'<span class="mute">Noch nichts.</span>')+'</div>';
   ov.classList.add('on');
 }
 
@@ -371,6 +386,11 @@ function renderStamm(){
     }).join('')+
     '<div class="row" style="margin-top:8px"><input type="text" id="newPr" placeholder="Neues Produkt"><input type="number" id="newPrice" step="0.05" min="0" placeholder="€" style="width:90px"><button class="btn pri" data-act="addPr">+</button></div>'+
     '<p class="small mute" style="margin:8px 0 0">Preisänderungen gelten nur für neue Striche – alte Buchungen behalten ihren Preis.</p></div>';
+
+  var cy=closableYears(),done=(S.meta.closedYears||[]);
+  h+='<div class="sec">Jahresabschluss</div><div class="card"><p class="small" style="margin:0 0 10px">Verdichtet die Einzelbuchungen eines vergangenen Jahres zu einer Summe je Person und Produkt. Salden, Abrechnung und Scoreboard (Jahr/Gesamt) bleiben gleich. Danach sind einzelne Buchungen dieses Jahres nicht mehr einzeln löschbar. Vorher heute ein Backup sichern.</p>'+
+    (cy.length?cy.map(function(x){return '<div class="row" style="margin:0 0 6px"><div class="grow"><b>'+x[0]+'</b> <span class="small mute">· '+x[1]+' Einzelbuchungen</span></div><button class="btn sm" data-act="closeYear" data-y="'+x[0]+'">Abschließen</button></div>'}).join(''):'<p class="small mute" style="margin:0">Kein vergangenes Jahr mit Einzelbuchungen.</p>')+
+    (done.length?'<p class="small mute" style="margin:8px 0 0">Abgeschlossen: '+done.join(', ')+'</p>':'')+'</div>';
   h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="pickFile">Backup-Datei laden</button><button class="btn" data-act="import">Import (Text)</button><input type="file" id="fileIn" accept=".json,application/json,text/plain" hidden><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm" data-act="copyJson">Kopieren</button><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
     '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · Daten nur auf diesem Gerät</p></div>';
@@ -513,6 +533,14 @@ var A={
   pickFile:function(){
     if((S.people.length||S.entries.length)&&!twice('pickfile','Ersetzt alle aktuellen Daten – nochmal tippen zum Fortfahren'))return;
     var f=$('#fileIn');if(f){f.value='';f.click()}
+  },
+  closeYear:function(b){
+    var y=b.dataset.y;
+    if(backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
+    if(!twice('cy'+y,'Nochmal tippen: Jahr '+y+' abschließen'))return;
+    var r=closeYear(y);
+    if(!r){toast('Abgebrochen: Salden hätten sich geändert');return}
+    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet – bitte neues Backup sichern');
   },
   backup:backupNow,
   seedProducts:function(){
