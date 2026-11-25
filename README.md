@@ -23,8 +23,5 @@ Lokal testen: `python3 -m http.server 8000` → http://localhost:8000
 Bei jeder Änderung `VERSION` in `index.html` und `V` in `sw.js` hochzählen, sonst bekommen Geräte kein Update.
 Anforderungen und Roadmap: `SPEC.md`, Arbeitsregeln für Claude Code: `CLAUDE.md`.
 
-## Windows-Version (portable .exe)
-- Build per GitHub Actions („Windows-Build“, manuell oder Tag `win-v*`), Ergebnis: `Strichliste-portable.exe`.
-- Daten liegen neben der .exe in `daten\strichliste.json` (+ `strichliste.bak.json` als Kopie bei jedem Speichern). Kein Sync zwischen Geräten.
-- Exe ist unsigniert → SmartScreen/AppLocker können blocken; IT-Vorgaben (USB, Software) nicht umgehen.
-- Ordner `daten` regelmäßig auf ein gesichertes Laufwerk kopieren (personenbezogene Daten, Stick kann verloren gehen).
+## Windows-PC / Firefox
+Seite normal im Browser öffnen. Die Daten liegen automatisch im Browserspeicher dieses Browsers/Profils (kein Server, kein Login). Unter Verwalten ganz unten zeigt die **Speicher-Diagnose**, was gespeichert ist. Regelmäßig **Export als Text** (oder die Backup-Erinnerung: „Kopieren“) in eine Datei/Mail sichern. Wiederherstellen: Verwalten → Import (Text).
