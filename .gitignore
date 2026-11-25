@@ -1,2 +1,4 @@
-.DS_Store
 node_modules/
+desktop/dist/
+desktop/app/
+.DS_Store

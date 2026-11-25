@@ -1,0 +1,25 @@
+{
+  "name": "strichliste",
+  "productName": "Strichliste",
+  "version": "1.1.0",
+  "description": "Strichlisten-Verwaltung (Desktop, portable)",
+  "main": "main.js",
+  "author": "Strichliste",
+  "license": "UNLICENSED",
+  "scripts": {
+    "prepare-app": "node prepare.js",
+    "build": "node prepare.js && electron-builder --win portable --x64 --publish never"
+  },
+  "devDependencies": {
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "build": {
+    "appId": "at.strichliste.app",
+    "productName": "Strichliste",
+    "files": ["main.js", "preload.js", "app/**"],
+    "win": { "target": "portable", "icon": "app/icons/icon-512.png" },
+    "portable": { "artifactName": "Strichliste-portable.exe" },
+    "directories": { "output": "dist" }
+  }
+}

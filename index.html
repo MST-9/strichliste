@@ -136,7 +136,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.0.9';
+var KEY='strichliste.v3', VERSION='1.1.0';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -174,6 +174,7 @@ function idb(mode,fn){return new Promise(function(res,rej){
   }catch(e){rej(e)}})}
 function save(){
   S.meta.savedAt=Date.now();
+  if(window.desktop&&window.__desktopReady){try{window.desktop.save(JSON.stringify(S))}catch(e){}}
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){lsOk=false}
   idb('readwrite',function(st){return st.put(JSON.parse(JSON.stringify(S)),'state3')}).then(function(){idbOk=true;badge()},function(){idbOk=false;badge()});
   badge();
@@ -394,7 +395,7 @@ function renderStamm(){
     (done.length?'<p class="small mute" style="margin:8px 0 0">Abgeschlossen: '+done.join(', ')+'</p>':'')+'</div>';
   h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="pickFile">Backup-Datei laden</button><button class="btn" data-act="import">Import (Text)</button><input type="file" id="fileIn" accept=".json,application/json,text/plain" hidden><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm" data-act="copyJson">Kopieren</button><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
-    '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · Daten nur auf diesem Gerät</p></div>';
+    '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · '+(window.desktop?'Datendatei: '+esc(window.desktop.path||'?'):'Daten nur auf diesem Gerät')+'</p></div>';
   $('#v-stamm').innerHTML=h;
   if(ui.exp&&ui.expFill){$('#jsonbox').value=JSON.stringify(S,null,1);ui.expFill=false}
 }
@@ -589,7 +590,9 @@ document.addEventListener('visibilitychange',function(){if(document.hidden&&S)sa
 
 /* ---------- Start ---------- */
 try{localStorage.removeItem('strichliste.v1');localStorage.removeItem('strichliste.v2')}catch(e){}
+function startApp(){
 S=lsLoad();
+if(window.__desktopFile){S=window.__desktopFile;window.__desktopReady=true}else if(window.desktop){window.__desktopReady=true}
 if(S){render()}
 var started=false;
 function emptyState(){return normalize({people:[],products:[],entries:[],payments:[],settings:{title:new Date().toLocaleDateString('de-AT',{month:'long',year:'numeric'})}})}
@@ -603,6 +606,15 @@ idb('readonly',function(st){return st.get('state3')}).then(function(o){
   fallback();
 },function(){idbOk=false;fallback()});
 setTimeout(fallback,4000);
+}
+if(window.desktop&&window.desktop.load){
+  window.desktop.load().then(function(txt){
+    var o=null;
+    if(txt){try{o=normalize(JSON.parse(txt));if(!(o.people&&o.products&&o.entries))o=null}catch(e){o=null}}
+    window.__desktopFile=o;
+    startApp();
+  },function(){startApp()});
+}else startApp();
 askPersist();
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!inFrame){
   navigator.serviceWorker.register('sw.js').then(function(reg){
