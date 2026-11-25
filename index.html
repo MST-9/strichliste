@@ -84,8 +84,8 @@ input[type=text],input[type=number],input[type=date],select,textarea{width:100%;
 .sheet{background:#fff;border:1px solid var(--line);border-radius:6px;padding:14px;margin:0 0 16px;min-width:640px;color:#000}
 .sheet .sh-head{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px}
 .sheet h2{margin:0;font-size:18px}
-table.st{width:100%;border-collapse:collapse;table-layout:fixed}
-table.st th,table.st td{border:1px solid #222;padding:2px 5px;font-size:13px}
+table.st{width:100%;border-collapse:separate;border-spacing:0;table-layout:auto;border-top:1px solid #222;border-left:1px solid #222}
+table.st th,table.st td{border:0;border-right:1px solid #222;border-bottom:1px solid #222;padding:2px 5px;font-size:13px}
 table.st th{background:#eee;text-align:center;vertical-align:middle}
 table.st th small{display:block;font-weight:400;font-size:11px}
 table.st td{height:10mm}
@@ -107,7 +107,7 @@ table.st .nt{width:30mm}
   .wrap{max-width:none;padding:0}
   #v-print{display:block!important}
   .prevwrap{overflow:visible}
-  .sheet{border:0;border-radius:0;margin:0;padding:0;min-width:0;width:100%;break-after:page}
+  .sheet{border:0;border-radius:0;margin:0;padding:10mm;min-width:0;width:100%;box-sizing:border-box;break-after:page;box-decoration-break:clone;-webkit-box-decoration-break:clone}
   .sheet:last-of-type{break-after:auto}
   table.st thead{display:table-header-group}
   table.st tr{break-inside:avoid}
@@ -136,7 +136,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.2.4';
+var KEY='strichliste.v3', VERSION='1.2.5';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -407,7 +407,7 @@ function sheetHtml(title,list,num){
   return '<section class="sheet"><div class="sh-head"><h2>Liste '+num+' · '+esc(title)+'</h2><span>'+esc(S.settings.title)+'</span></div><table class="st"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table><p class="foot">Pro Konsum einen Strich. Gedruckt am '+new Date().toLocaleDateString('de-AT')+'.</p></section>';
 }
 function renderPrint(){
-  $('#pg').textContent='@page{size:A4 '+S.settings.orient+';margin:10mm}';
+  $('#pg').textContent='@page{size:A4 '+S.settings.orient+';margin:0}';
   var a=activeProds().filter(function(p){return p.list==='A'}),b=activeProds().filter(function(p){return p.list==='B'});
   var sel=function(k,v){return S.settings[k]===v?' selected':''};
   $('#v-print').innerHTML='<div class="noprint">'+
