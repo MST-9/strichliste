@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.5.2';
+var KEY='strichliste.v3', VERSION='1.5.3';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -249,7 +249,7 @@ function av(p){return '<span class="av">'+esc(p.rank||'·')+'</span>'}
 function backupNote(){
   var a=backupAge();
   if(!S.entries.length||(a!==null&&a<=7))return '';
-  return '<div class="note red">💾 Letztes Backup: <b>'+(a===null?'nie':'vor '+a+' Tagen')+'</b>. <button class="btn sm" data-act="backup">Als Datei laden</button> <button class="btn sm" data-act="backupCopy">Kopieren</button></div>';
+  return '<div class="note red">💾 Letztes Backup: <b>'+(a===null?'nie':'vor '+a+' Tagen')+'</b>. <button class="btn sm pri" data-act="backupCopy">Kopieren</button> <button class="btn sm" data-act="backup">Als Datei (iPhone)</button></div>';
 }
 
 function renderErf(){
@@ -375,7 +375,7 @@ function renderStamm(){
   var a=backupAge();
   var h=('<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
     '<div class="small" style="margin-top:4px"><b>Letztes Backup:</b> '+(a===null?'noch nie':a===0?'heute':'vor '+a+' Tagen')+'</div>'+
-    '<button class="btn pri" data-act="backup" style="width:100%;margin-top:10px;padding:11px">💾 Backup sichern (Teilen → In Dateien sichern)</button>'+
+    '<button class="btn pri" data-act="backupCopy" style="width:100%;margin-top:10px;padding:11px">📋 Backup kopieren (dann in Editor/Mail einfügen)</button><button class="btn" data-act="backup" style="width:100%;margin-top:8px;padding:10px">💾 Als Datei sichern (iPhone: Teilen → In Dateien)</button>'+
     '<p class="small mute" style="margin:8px 0 0">iPhone: Safari → Teilen → <b>Zum Home-Bildschirm</b>. Nur als installierte Web-App räumt iOS die Daten nicht nach 7 Tagen Nichtbenutzung weg. Automatisch Dateien schreiben darf iOS nicht, darum die Backup-Erinnerung.</p></div>');
   h+='<div class="sec" style="margin-top:0">Personen ('+S.people.filter(function(p){return p.active}).length+' aktiv)</div><div class="card">'+
     S.people.slice().sort(cmpP).map(function(p){
@@ -539,7 +539,7 @@ var A={
   diag:function(){var e=$('#diag');if(e)e.textContent='prüfe …';fillDiag()},
   closeYear:function(b){
     var y=b.dataset.y;
-    if(backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
+    if(backupAge()!==0){toast('Erst heute ein Backup kopieren oder sichern (Button oben)');return}
     if(!twice('cy'+y,'Nochmal tippen: Jahr '+y+' abschließen'))return;
     var r=closeYear(y);
     if(!r){toast('Abgebrochen: Salden hätten sich geändert');return}
