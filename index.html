@@ -84,13 +84,13 @@ input[type=text],input[type=number],input[type=date],select,textarea{width:100%;
 .sheet{background:#fff;border:1px solid var(--line);border-radius:6px;padding:14px;margin:0 0 16px;min-width:640px;color:#000}
 .sheet .sh-head{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 8px}
 .sheet h2{margin:0;font-size:18px}
-table.st{width:100%;border-collapse:separate;border-spacing:0;table-layout:auto;border-top:1px solid #222;border-left:1px solid #222}
+table.st{width:100%;border-collapse:separate;border-spacing:0;table-layout:fixed;border-top:1px solid #222;border-left:1px solid #222}
 table.st th,table.st td{border:0;border-right:1px solid #222;border-bottom:1px solid #222;padding:2px 5px;font-size:13px}
 table.st th{background:#eee;text-align:center;vertical-align:middle}
 table.st th small{display:block;font-weight:400;font-size:11px}
 table.st td{height:10mm;box-sizing:border-box}
-table.st .nm{width:46mm;text-align:left;font-weight:600;white-space:nowrap}
-table.st .nt{width:30mm}
+table.st .nm{width:50mm;text-align:left;font-weight:600;white-space:nowrap;overflow:hidden}
+table.st .nt{width:22mm}
 .sheet .foot{font-size:11px;color:#555;margin:6px 0 0}
 .hist{font-size:13px}
 .hist div{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line)}
@@ -140,7 +140,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.3.2';
+var KEY='strichliste.v3', VERSION='1.3.3';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
