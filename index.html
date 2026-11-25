@@ -109,6 +109,10 @@ table.st .nt{width:30mm}
   .prevwrap{overflow:visible}
   .sheet{border:0;border-radius:0;margin:0;padding:10mm;min-width:0;width:100%;box-sizing:border-box;break-after:page;box-decoration-break:clone;-webkit-box-decoration-break:clone}
   .sheet:last-of-type{break-after:auto}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table.st{border-top:2px solid #000;border-left:2px solid #000}
+  table.st th,table.st td{border-right:2px solid #000;border-bottom:2px solid #000}
+  table.st th{background:#e6e6e6}
   table.st thead{display:table-header-group}
   table.st tr{break-inside:avoid}
 }
@@ -136,7 +140,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.2.5';
+var KEY='strichliste.v3', VERSION='1.2.6';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
