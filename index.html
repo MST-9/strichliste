@@ -95,7 +95,7 @@ table.st .nt{width:30mm}
 .hist{font-size:13px}
 .hist div{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line)}
 .sec{font-size:12px;text-transform:uppercase;letter-spacing:.09em;color:var(--acc);font-weight:700;margin:16px 2px 6px}
-.edit{display:grid;grid-template-columns:34px 1fr 82px 92px 44px;gap:6px;align-items:center;margin:0 0 6px}
+.edit{display:grid;grid-template-columns:1fr 82px 92px 44px;gap:6px;align-items:center;margin:0 0 6px}
 .edit.pe{grid-template-columns:100px 1fr 44px 44px}
 .edit input,.edit select{padding:7px 8px}
 .tg{width:44px;height:30px;border-radius:99px;border:1px solid var(--line);background:#dedcc9;position:relative}
@@ -136,7 +136,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.1.1';
+var KEY='strichliste.v3', VERSION='1.1.2';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -282,7 +282,7 @@ function renderErf(){
   }else{
     var ps=activePeople(),pr=activeProds();
     h+='<div class="card"><b>Datum der Buchung</b><div class="small mute" style="margin:2px 0 8px">Anzahl Striche je Person und Produkt eintragen, dann buchen.</div><input type="date" id="mDate" value="'+dayKey(Date.now())+'"></div>';
-    h+='<div class="mtx"><table><thead><tr><th>Name</th>'+pr.map(function(p){return '<th>'+p.icon+'<br><span class="small">'+esc(p.name)+'</span></th>'}).join('')+'</tr></thead><tbody>'+
+    h+='<div class="mtx"><table><thead><tr><th>Name</th>'+pr.map(function(p){return '<th><span class="small">'+esc(p.name)+'</span></th>'}).join('')+'</tr></thead><tbody>'+
       ps.map(function(p){return '<tr><td>'+esc(lbl(p))+'</td>'+pr.map(function(x){return '<td><input type="number" inputmode="numeric" min="0" data-p="'+p.id+'" data-pr="'+x.id+'"></td>'}).join('')+'</tr>'}).join('')+'</tbody></table></div>';
     h+='<div style="height:12px"></div><button class="btn pri" data-act="mbook" style="width:100%;padding:12px">Alle buchen</button>';
     $('#v-erf').innerHTML=h;
@@ -307,9 +307,9 @@ function renderSheet(){
   $('#sheetm').innerHTML='<div class="row" style="margin-bottom:10px">'+av(p)+'<div class="grow"><b style="font-size:18px">'+esc(lbl(p))+'</b><div class="small mute">Offen: <span class="amt">'+money(b)+'</span></div></div><button class="btn" data-act="closeSheet">Fertig</button></div>'+
     activeProds().map(function(x){
       var t=todayQty(p.id,x.id);
-      return '<div class="prodrow"><span class="ic">'+x.icon+'</span><div class="grow"><b>'+esc(x.name)+'</b><div class="small mute">'+money(x.price)+'</div></div><div class="stp"><button data-act="dec" data-pr="'+x.id+'"'+(t?'':' disabled style="opacity:.35"')+'>−</button><b>'+t+'</b><button class="plus" data-act="inc" data-pr="'+x.id+'">+</button></div></div>';
+      return '<div class="prodrow"><div class="grow"><b>'+esc(x.name)+'</b><div class="small mute">'+money(x.price)+'</div></div><div class="stp"><button data-act="dec" data-pr="'+x.id+'"'+(t?'':' disabled style="opacity:.35"')+'>−</button><b>'+t+'</b><button class="plus" data-act="inc" data-pr="'+x.id+'">+</button></div></div>';
     }).join('')+
-    '<div class="sec">Letzte Buchungen</div><div class="hist">'+(hist.map(function(e){var x=prod(e.pr)||{icon:'?',name:'?'};return '<div><span>'+x.icon+' '+esc(x.name)+' ×'+e.q+' · '+(e.arch?'Jahr '+e.d.slice(0,4)+' (Summe)':fmtD(e.d))+'</span><span>'+money(val(e))+(e.arch?'':' <button class="btn sm dng" data-act="delEntry" data-id="'+e.id+'">✕</button>')+'</span></div>'}).join('')||'<span class="mute">Noch nichts.</span>')+'</div>';
+    '<div class="sec">Letzte Buchungen</div><div class="hist">'+(hist.map(function(e){var x=prod(e.pr)||{name:'?'};return '<div><span>'+esc(x.name)+' ×'+e.q+' · '+(e.arch?'Jahr '+e.d.slice(0,4)+' (Summe)':fmtD(e.d))+'</span><span>'+money(val(e))+(e.arch?'':' <button class="btn sm dng" data-act="delEntry" data-id="'+e.id+'">✕</button>')+'</span></div>'}).join('')||'<span class="mute">Noch nichts.</span>')+'</div>';
   ov.classList.add('on');
 }
 
@@ -332,7 +332,7 @@ function renderScore(){
   S.entries.forEach(function(e){if(!inPer(e,ui.per))return;tot+=val(e);qty[e.pr]=(qty[e.pr]||0)+e.q});
   var top=Object.keys(qty).sort(function(a,b){return qty[b]-qty[a]})[0];
   var h=seg('per','per',[['month','Monat'],['year','Jahr'],['all','Gesamt']])+seg('met','met',[['eur','Ausgaben €'],['qty','Stückzahl']]);
-  h+='<div class="kpis"><div><b>'+money(tot)+'</b><span>Umsatz</span></div><div><b>'+(r.length?money(Math.round(tot/r.length)):'–')+'</b><span>Ø pro Person</span></div><div><b>'+(top?prod(top).icon+' '+esc(prod(top).name):'–')+'</b><span>Top-Produkt</span></div></div>';
+  h+='<div class="kpis"><div><b>'+money(tot)+'</b><span>Umsatz</span></div><div><b>'+(r.length?money(Math.round(tot/r.length)):'–')+'</b><span>Ø pro Person</span></div><div><b>'+(top?esc(prod(top).name):'–')+'</b><span>Top-Produkt</span></div></div>';
   if(!r.length){h+='<p class="mute">Keine Daten im Zeitraum.</p>'}
   else{
     var order=[1,0,2],hs=[84,112,64],cols=['#d8dde3','#f0cf6a','#d9ae85'],med=['🥈','🥇','🥉'];
@@ -342,7 +342,7 @@ function renderScore(){
     var aw=activeProds().map(function(x){
       var m={};S.entries.forEach(function(e){if(e.pr===x.id&&inPer(e,ui.per))m[e.p]=(m[e.p]||0)+e.q});
       var k=Object.keys(m).sort(function(a,b){return m[b]-m[a]})[0];
-      return k?'<span class="chip">'+x.icon+' <b>'+esc(x.name)+'-König:</b> '+esc(nm(k,ui.anon))+' ('+m[k]+'×)</span>':'';
+      return k?'<span class="chip"><b>'+esc(x.name)+'-König:</b> '+esc(nm(k,ui.anon))+' ('+m[k]+'×)</span>':'';
     }).join('');
     h+='<div class="sec">Produkt-Könige</div><div class="chips">'+aw+'</div>';
   }
@@ -353,7 +353,7 @@ function renderScore(){
 function sheetHtml(title,list,num){
   if(!list.length)return '';
   var ppl=activePeople(),sp=Math.max(0,parseInt(S.settings.spare,10)||0);
-  var head='<tr><th class="nm">Dienstgrad Name</th>'+list.map(function(p){return '<th>'+p.icon+' '+esc(p.name)+'<small>'+money(p.price)+'</small></th>'}).join('')+'<th class="nt">Notiz</th></tr>';
+  var head='<tr><th class="nm">Dienstgrad Name</th>'+list.map(function(p){return '<th>'+esc(p.name)+'<small>'+money(p.price)+'</small></th>'}).join('')+'<th class="nt">Notiz</th></tr>';
   var cell=list.map(function(){return '<td></td>'}).join('');
   var rows=ppl.map(function(p){return '<tr><td class="nm">'+esc(lbl(p))+'</td>'+cell+'<td class="nt"></td></tr>'}).join('');
   for(var i=0;i<sp;i++)rows+='<tr><td class="nm"></td>'+cell+'<td class="nt"></td></tr>';
@@ -384,9 +384,9 @@ function renderStamm(){
       return '<div class="edit pe"><select data-chg="prank" data-id="'+p.id+'">'+rankOpts(p.rank)+'</select><input type="text" data-chg="plast" data-id="'+p.id+'" value="'+esc(p.last)+'"><button class="tg '+(p.active?'on':'')+'" data-act="togP" data-id="'+p.id+'" aria-label="aktiv"></button>'+(used?'<span></span>':'<button class="btn sm dng" data-act="delP" data-id="'+p.id+'">✕</button>')+'</div>';
     }).join('')+
     '<div class="row" style="margin-top:8px"><select id="newRank" style="width:100px">'+rankOpts('')+'</select><input type="text" id="newLast" placeholder="Nachname"><button class="btn pri" data-act="addP">+</button></div></div>';
-  h+='<div class="sec">Produkte</div><div class="card"><div class="edit small mute" style="margin-bottom:2px"><span></span><span>Name</span><span>Preis €</span><span>Liste</span><span>aktiv</span></div>'+
+  h+='<div class="sec">Produkte</div><div class="card"><div class="edit small mute" style="margin-bottom:2px"><span>Name</span><span>Preis €</span><span>Liste</span><span>aktiv</span></div>'+
     S.products.map(function(p){
-      return '<div class="edit"><input type="text" data-chg="picon" data-id="'+p.id+'" value="'+esc(p.icon)+'" style="text-align:center;padding:7px 2px"><input type="text" data-chg="prname" data-id="'+p.id+'" value="'+esc(p.name)+'"><input type="number" step="0.05" min="0" data-chg="price" data-id="'+p.id+'" value="'+(p.price/100).toFixed(2)+'"><select data-chg="plist" data-id="'+p.id+'"><option value="A"'+(p.list==='A'?' selected':'')+'>Liste 1</option><option value="B"'+(p.list==='B'?' selected':'')+'>Liste 2</option></select><button class="tg '+(p.active?'on':'')+'" data-act="togPr" data-id="'+p.id+'" aria-label="aktiv"></button></div>';
+      return '<div class="edit"><input type="text" data-chg="prname" data-id="'+p.id+'" value="'+esc(p.name)+'"><input type="number" step="0.05" min="0" data-chg="price" data-id="'+p.id+'" value="'+(p.price/100).toFixed(2)+'"><select data-chg="plist" data-id="'+p.id+'"><option value="A"'+(p.list==='A'?' selected':'')+'>Liste 1</option><option value="B"'+(p.list==='B'?' selected':'')+'>Liste 2</option></select><button class="tg '+(p.active?'on':'')+'" data-act="togPr" data-id="'+p.id+'" aria-label="aktiv"></button></div>';
     }).join('')+
     '<div class="row" style="margin-top:8px"><input type="text" id="newPr" placeholder="Neues Produkt"><input type="number" id="newPrice" step="0.05" min="0" placeholder="€" style="width:90px"><button class="btn pri" data-act="addPr">+</button></div>'+
     '<p class="small mute" style="margin:8px 0 0">Preisänderungen gelten nur für neue Striche – alte Buchungen behalten ihren Preis.</p></div>';
