@@ -91,6 +91,8 @@ table.st th small{display:block;font-weight:400;font-size:11px}
 table.st td{height:10mm;box-sizing:border-box}
 table.st .nm{width:50mm;text-align:left;font-weight:600;white-space:nowrap;overflow:hidden}
 table.st .nt{width:22mm}
+table.st td.oc{padding:0}
+table.st td.oc b{display:block;width:10mm;height:9.2mm;line-height:9.2mm;text-align:center;font-size:15px;border-right:1px solid #000;box-sizing:border-box}
 .sheet .foot{font-size:11px;color:#555;margin:6px 0 0}
 .hist{font-size:13px}
 .hist div{display:flex;justify-content:space-between;align-items:center;padding:4px 0;border-bottom:1px dashed var(--line)}
@@ -140,7 +142,7 @@ table.st .nt{width:22mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.3.5';
+var KEY='strichliste.v3', VERSION='1.3.7';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -286,6 +288,15 @@ function ranking(per,met){
   var m={};S.entries.forEach(function(e){if(!inPer(e,per))return;m[e.p]=(m[e.p]||0)+(met==='eur'?val(e):e.q)});
   return Object.keys(m).map(function(k){return {p:k,v:m[k]}}).sort(function(a,b){return b.v-a.v});
 }
+/* offene Stück je Produkt: Zahlungen tilgen die ältesten Buchungen zuerst, Rest = offen (aufgerundet) */
+function openUnits(pid){
+  var pool=0,u={};S.payments.forEach(function(p){if(p.p===pid)pool+=p.amt});
+  S.entries.filter(function(e){return e.p===pid}).sort(function(a,b){return (a.t||0)-(b.t||0)}).forEach(function(e){
+    var v=val(e);if(!(e.q>0)||!(v>0))return;
+    var c=Math.min(pool,v);pool-=c;var r=v-c;if(r>0)u[e.pr]=(u[e.pr]||0)+e.q*r/v});
+  Object.keys(u).forEach(function(k){u[k]=Math.ceil(u[k]-1e-9)});return u;
+}
+function showOpen(){return S.settings.showOpen!==false}
 function book(pid,prid,q,d){
   var pr=prod(prid);if(!pr||!q)return;
   var e=S.entries.find(function(x){return x.p===pid&&x.pr===prid&&x.d===d&&!x.arch});
@@ -407,7 +418,9 @@ function sheetHtml(title,list,num){
   var ppl=activePeople(),sp=Math.max(0,parseInt(S.settings.spare,10)||0);
   var head='<tr><th class="nm">Dienstgrad Name</th>'+list.map(function(p){return '<th>'+esc(p.name)+'<small>'+money(p.price)+'</small></th>'}).join('')+'<th class="nt">Notiz</th></tr>';
   var cell=list.map(function(){return '<td></td>'}).join('');
-  var rows=ppl.map(function(p){return '<tr><td class="nm">'+esc(lbl(p))+'</td>'+cell+'<td class="nt"></td></tr>'}).join('');
+  var rows=ppl.map(function(p){var u=showOpen()?openUnits(p.id):{};
+    var cs=list.map(function(x){return u[x.id]>0?'<td class="oc"><b>'+u[x.id]+'</b></td>':'<td></td>'}).join('');
+    return '<tr><td class="nm">'+esc(lbl(p))+'</td>'+cs+'<td class="nt"></td></tr>'}).join('');
   for(var i=0;i<sp;i++)rows+='<tr><td class="nm"></td>'+cell+'<td class="nt"></td></tr>';
   return '<section class="sheet"><div class="sh-head"><h2>Liste '+num+'</h2><span>'+esc(S.settings.title)+'</span></div><table class="st"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table><p class="foot">Pro Konsum einen Strich. Gedruckt am '+new Date().toLocaleDateString('de-AT')+'.</p></section>';
 }
@@ -418,7 +431,7 @@ function renderPrint(){
   $('#v-print').innerHTML='<div class="noprint">'+
     (inFrame?'<div class="note">⚠️ In dieser Vorschau (Sandbox) ist der Druckdialog gesperrt. Zum echten Drucken die HTML-Datei lokal im Browser öffnen – das Layout unten ist exakt das, was gedruckt wird.</div>':'')+
     '<div class="card"><div class="row" style="gap:8px"><div class="grow"><label class="small mute">Titel / Zeitraum</label><input type="text" data-chg="title" value="'+esc(S.settings.title)+'"></div><div style="width:100px"><label class="small mute">Leerzeilen</label><input type="number" min="0" max="20" data-chg="spare" value="'+esc(S.settings.spare)+'"></div></div>'+
-    '<div style="height:8px"></div><div class="row"><div class="grow"><label class="small mute">Format</label><select data-chg="orient"><option value="landscape"'+sel('orient','landscape')+'>A4 quer</option><option value="portrait"'+sel('orient','portrait')+'>A4 hoch</option></select></div><div class="grow"><label class="small mute">Sortierung</label><select data-chg="sort"><option value="name"'+sel('sort','name')+'>Nachname A–Z</option><option value="rank"'+sel('sort','rank')+'>Dienstgrad</option></select></div></div>'+
+    '<div style="height:8px"></div><div class="row"><div class="grow"><label class="small mute">Format</label><select data-chg="orient"><option value="landscape"'+sel('orient','landscape')+'>A4 quer</option><option value="portrait"'+sel('orient','portrait')+'>A4 hoch</option></select></div><div class="grow"><label class="small mute">Offene Stück</label><select data-chg="showOpen"><option value="1"'+(showOpen()?' selected':'')+'>links anzeigen</option><option value="0"'+(showOpen()?'':' selected')+'>nicht anzeigen</option></select></div><div class="grow"><label class="small mute">Sortierung</label><select data-chg="sort"><option value="name"'+sel('sort','name')+'>Nachname A–Z</option><option value="rank"'+sel('sort','rank')+'>Dienstgrad</option></select></div></div>'+
     ((window.desktop||fsState!=='na'||(window.matchMedia&&matchMedia('(pointer:fine)').matches))?'<button class="btn pri" data-act="print" style="width:100%;margin-top:10px;padding:11px">🖨️ Drucken</button>':'<button class="btn pri" data-act="pdf" style="width:100%;margin-top:10px;padding:11px">📄 PDF erstellen (iPhone: Teilen → Drucken)</button><button class="btn" data-act="print" style="width:100%;margin-top:8px;padding:10px">🖨️ Direkt drucken (Computer)</button>')+
     '<p class="small mute" style="margin:8px 0 0">App-Version '+VERSION+'. Liste 1 = Produkte mit Zuordnung „Liste 1“ (Standard: Kaffee, Twix). Liste 2 = Rest, Liste 3 = Pizza. Zuordnung unter Verwalten.</p></div></div>'+
     '<div class="prevwrap">'+sheetHtml('Kaffee & Twix',a,1)+sheetHtml('Getränke & Sonstiges',b,2)+sheetHtml('Pizza',c,3)+'</div>';
@@ -452,7 +465,7 @@ function renderStamm(){
     '<div class="row" style="margin-top:8px"><select id="newRank" style="width:100px">'+rankOpts('')+'</select><input type="text" id="newLast" placeholder="Nachname"><button class="btn pri" data-act="addP">+</button></div></div>';
   h+='<div class="sec">Produkte</div><div class="card"><div class="edit small mute" style="margin-bottom:2px"><span>Name</span><span>Preis €</span><span>Liste</span><span>aktiv</span></div>'+
     S.products.map(function(p){
-      return '<div class="edit"><input type="text" data-chg="prname" data-id="'+p.id+'" value="'+esc(p.name)+'"><input type="number" step="0.05" min="0" data-chg="price" data-id="'+p.id+'" value="'+(p.price/100).toFixed(2)+'"><select data-chg="plist" data-id="'+p.id+'"><option value="A"'+(p.list==='A'?' selected':'')+'>Liste 1</option><option value="B"'+(p.list==='B'?' selected':'')+'>Liste 2</option><option value="C"'+(p.list==='C'?' selected':'')+'>Liste 3</option></select><button class="tg '+(p.active?'on':'')+'" data-act="togPr" data-id="'+p.id+'" aria-label="aktiv"></button></div>';
+      return '<div class="edit"><input type="text" data-chg="prname" data-id="'+p.id+'" value="'+esc(p.name)+'"><input type="number" step="0.05" min="0" data-chg="price" data-id="'+p.id+'" value="'+(p.price/100).toFixed(2)+'"><select data-chg="plist" data-id="'+p.id+'"><option value="A"'+(p.list==='A'?' selected':'')+'>Liste 1</option><option value="B"'+(p.list==='B'?' selected':'')+'>Liste 2</option><option value="C"'+(p.list==='C'?' selected':'')+'>Liste 3</option></select><button class="tg '+(p.active?'on':'')+'" data-act="togPr" data-id="'+p.id+'" aria-label="aktiv"></button></div><div class="chips" style="margin:-2px 0 10px"><button class="btn sm" data-act="mvPr" data-d="-1" data-id="'+p.id+'" aria-label="nach oben">▲</button><button class="btn sm" data-act="mvPr" data-d="1" data-id="'+p.id+'" aria-label="nach unten">▼</button>'+(S.entries.some(function(e){return e.pr===p.id})?'<span class="small mute">hat Buchungen – nur deaktivieren</span>':'<button class="btn sm dng" data-act="delPr" data-id="'+p.id+'">Entfernen</button>')+'</div>';
     }).join('')+
     '<div class="row" style="margin-top:8px"><input type="text" id="newPr" placeholder="Neues Produkt"><input type="number" id="newPrice" step="0.05" min="0" placeholder="€" style="width:80px"><select id="newList" style="width:84px">'+['A','B','C'].map(function(l,i){return '<option value="'+l+'"'+((ui.newList||'B')===l?' selected':'')+'>Liste '+(i+1)+'</option>'}).join('')+'</select><button class="btn pri" data-act="addPr">+</button></div>'+
     '<p class="small mute" style="margin:8px 0 0">Preisänderungen gelten nur für neue Striche – alte Buchungen behalten ihren Preis.</p></div>';
@@ -503,7 +516,7 @@ function tw(t,sz,b){try{_cv=_cv||document.createElement('canvas').getContext('2d
 function fit(t,w,sz,b){if(tw(t,sz,b)<=w)return t;while(t.length>1&&tw(t+'...',sz,b)>w)t=t.slice(0,-1);return t+'...'}
 function buildPdf(){
   var land=S.settings.orient==='landscape',W=land?841.89:595.28,H=land?595.28:841.89,M=28;
-  var rows=activePeople().map(lbl),sp=Math.max(0,parseInt(S.settings.spare,10)||0);for(var i=0;i<sp;i++)rows.push('');
+  var pl=activePeople(),rows=pl.map(lbl),ou=pl.map(function(p){return showOpen()?openUnits(p.id):{}}),sp=Math.max(0,parseInt(S.settings.spare,10)||0);for(var i=0;i<sp;i++)rows.push('');
   var prods=activeProds();
   var lists=[['Kaffee & Twix',prods.filter(function(p){return p.list==='A'}),1],['Getränke & Sonstiges',prods.filter(function(p){return p.list==='B'}),2],['Pizza',prods.filter(function(p){return p.list==='C'}),3]].filter(function(l){return l[1].length});
   var NAMEW=Math.min(150,W*.26),PAYW=land?110:80,HEADH=34,ROWH=28.3,YTOP=H-M-26,pages=[];
@@ -526,7 +539,7 @@ function buildPdf(){
       y-=HEADH;
       while(idx<rows.length&&y-ROWH>=M+14){
         c+=box(M,y-ROWH,NAMEW,ROWH)+(rows[idx]?txt(M+4,y-ROWH/2-3.5,fit(rows[idx],NAMEW-8,10,true),10,true):'');
-        ps.forEach(function(p,k){c+=box(M+NAMEW+k*colW,y-ROWH,colW,ROWH)});
+        ps.forEach(function(p,k){var cx=M+NAMEW+k*colW;c+=box(cx,y-ROWH,colW,ROWH);var n=ou[idx]&&ou[idx][p.id];if(n>0){c+=ctr(cx,28,y-ROWH/2-4,String(n),12,true)+f2(cx+28)+' '+f2(y-ROWH)+' m '+f2(cx+28)+' '+f2(y)+' l S\n'}});
         c+=box(px,y-ROWH,PAYW,ROWH);y-=ROWH;idx++;
       }
       c+=txt(M,M-2,'Pro Konsum einen Strich. Gedruckt am '+date,8,false);
@@ -593,6 +606,8 @@ var A={
   print:function(){try{window.print()}catch(e){}},
   pdf:pdfShare,
   togP:function(b){var p=person(b.dataset.id);p.active=!p.active;save();render()},
+  mvPr:function(b){var a=S.products,i=a.findIndex(function(p){return p.id===b.dataset.id}),k=i+parseInt(b.dataset.d,10);if(i<0||k<0||k>=a.length)return;var t=a[i];a[i]=a[k];a[k]=t;save();render()},
+  delPr:function(b){if(S.entries.some(function(e){return e.pr===b.dataset.id}))return;if(!twice('dpr'+b.dataset.id,'Nochmal tippen: Produkt wird entfernt'))return;S.products=S.products.filter(function(p){return p.id!==b.dataset.id});save();render()},
   togPr:function(b){var p=prod(b.dataset.id);p.active=!p.active;save();render()},
   delP:function(b){if(!twice('dl'+b.dataset.id))return;S.people=S.people.filter(function(p){return p.id!==b.dataset.id});save();render()},
   addP:function(){var v=$('#newLast').value.trim();if(!v){toast('Nachname eingeben');return}S.people.push({id:'pe_'+uid(),rank:$('#newRank').value,last:v,active:true});save();render()},
@@ -654,6 +669,7 @@ document.addEventListener('change',function(e){
   else if(c==='spare')S.settings.spare=Math.max(0,Math.min(20,parseInt(v,10)||0));
   else if(c==='orient'){S.settings.orient=v;S.settings.orientSet=true}
   else if(c==='sort')S.settings.sort=v;
+  else if(c==='showOpen')S.settings.showOpen=(v==='1');
   else if(c==='prank')person(t.dataset.id).rank=v;
   else if(c==='plast'){if(v.trim())person(t.dataset.id).last=v.trim()}
   else if(c==='prname'){if(v.trim())prod(t.dataset.id).name=v.trim()}
