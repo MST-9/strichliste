@@ -120,3 +120,7 @@ Anlehnung an das Österreichische Bundesheer, ohne dessen Logos/Wappen/Bundesadl
 - Export → Daten löschen → Import stellt identischen Zustand her.
 - localStorage/IndexedDB-Verlust simuliert (einer leer) → Daten werden aus dem anderen wiederhergestellt (Prototyp-Verhalten; in der finalen App reicht IndexedDB + Backup).
 - Als Home-Bildschirm-App auf dem iPhone installiert, nach 10 Tagen ohne Nutzung noch alle Daten vorhanden.
+
+
+## Online-Sicherung (optional, ab 1.4.0)
+Standard aus. Verwalten → Online-Sicherung: Repo `Besitzer/Name` (privat), Token (nur Contents Read/Write auf dieses Repo), Passphrase (≥ 12 Zeichen). Datei `strichliste.enc` = JSON `{v,kdf,s,i,c}` (PBKDF2-SHA256 250k → AES-256-GCM, Salt/IV je Upload neu). Upload 15 s nach jeder Änderung und beim Verlassen der Seite, Download beim Start. Neuerer `meta.savedAt` gewinnt; ein leerer lokaler Stand überschreibt nie einen gefüllten Online-Stand; falsche Passphrase überschreibt nichts. Token und Passphrase nur in localStorage (`strichliste.cloud`), nicht im Export. Rechtlich/organisatorisch vorher mit IT/Datenschutz klären.

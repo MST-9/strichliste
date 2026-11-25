@@ -9,7 +9,7 @@ Kleine App zur Verwaltung der Büro-Strichlisten (Kaffee, Twix, Getränke, Pizza
 - Knapp, keine Over-Engineering-Abstraktionen. Kein Framework-Zoo.
 
 ## Stack (Vorgabe)
-Vite + TypeScript, Preact (oder Vanilla), IndexedDB via Dexie, vite-plugin-pwa, Vitest. Kein Backend, keine externen Requests zur Laufzeit.
+Vite + TypeScript, Preact (oder Vanilla), IndexedDB via Dexie, vite-plugin-pwa, Vitest. Kein Backend, keine externen Requests zur Laufzeit. **Einzige Ausnahme:** optionale, standardmäßig ausgeschaltete Online-Sicherung (nur AES-256-GCM-verschlüsselter Text in ein privates GitHub-Repo, Zugang in Verwalten eingetragen; Klartext verlässt nie das Gerät).
 
 ## Struktur (Ziel)
 ```

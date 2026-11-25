@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.3.9';
+var KEY='strichliste.v3', VERSION='1.4.0';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -221,13 +221,61 @@ function fileCard(){
   return h+'</div>';
 }
 
+/* ---------- Online-Sicherung (optional, AES-256-GCM verschlüsselt, privates GitHub-Repo) ----------
+   Standard AUS. Nur verschlüsselter Text verlässt das Gerät. Token + Passphrase liegen nur in localStorage (nicht im Export). */
+var CK='strichliste.cloud',CPATH='strichliste.enc',cloudMsg='',cloudTm=null,cloudBusy=false,cloudSkip=false;
+function cCfg(){try{return JSON.parse(localStorage.getItem(CK)||'null')}catch(e){return null}}
+function cOn(){var c=cCfg();return !!(c&&c.on&&c.repo&&c.token&&c.pass)}
+function cStatus(m){cloudMsg=m;var e=$('#cloudst');if(e)e.textContent=m}
+function b64e(u){var t='';for(var i=0;i<u.length;i+=8192)t+=String.fromCharCode.apply(null,u.subarray(i,i+8192));return btoa(t)}
+function b64d(t){var b=atob(t),u=new Uint8Array(b.length);for(var i=0;i<b.length;i++)u[i]=b.charCodeAt(i);return u}
+function cKey(pass,salt){return crypto.subtle.importKey('raw',new TextEncoder().encode(pass),'PBKDF2',false,['deriveKey']).then(function(km){return crypto.subtle.deriveKey({name:'PBKDF2',salt:salt,iterations:250000,hash:'SHA-256'},km,{name:'AES-GCM',length:256},false,['encrypt','decrypt'])})}
+function cEnc(text,pass){var salt=crypto.getRandomValues(new Uint8Array(16)),iv=crypto.getRandomValues(new Uint8Array(12));
+  return cKey(pass,salt).then(function(k){return crypto.subtle.encrypt({name:'AES-GCM',iv:iv},k,new TextEncoder().encode(text))}).then(function(ct){return JSON.stringify({v:1,kdf:'pbkdf2-sha256-250000',s:b64e(salt),i:b64e(iv),c:b64e(new Uint8Array(ct))})})}
+function cDec(json,pass){var o=JSON.parse(json);return cKey(pass,b64d(o.s)).then(function(k){return crypto.subtle.decrypt({name:'AES-GCM',iv:b64d(o.i)},k,b64d(o.c))}).then(function(pt){return new TextDecoder().decode(pt)})}
+function cApi(c,method,body){return fetch('https://api.github.com/repos/'+c.repo+'/contents/'+CPATH,{method:method,cache:'no-store',headers:{Authorization:'Bearer '+c.token,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'},body:body?JSON.stringify(body):undefined})}
+/* holt Remote: {sha, data(S-Objekt)|null}; wirft bei Netz-/Rechte-/Passphrase-Fehler */
+function cGet(c){return cApi(c,'GET').then(function(r){
+  if(r.status===404)return {sha:null,data:null};
+  if(r.status===401||r.status===403)throw new Error('Token ungültig oder ohne Zugriff');
+  if(!r.ok)throw new Error('Server-Fehler '+r.status);
+  return r.json().then(function(j){return cDec(atob(String(j.content).replace(/\s/g,'')),c.pass).then(function(t){return {sha:j.sha,data:JSON.parse(t)}},function(){throw new Error('Passphrase falsch oder Datei beschädigt – nichts überschrieben')})})})}
+function cPush(force){
+  var c=cCfg();if(!cOn()||cloudBusy)return Promise.resolve();cloudBusy=true;cStatus('lädt hoch …');
+  return cGet(c).then(function(rm){
+    var rmFull=rm.data&&(rm.data.people||[]).length+(rm.data.entries||[]).length>0,lcEmpty=!S.people.length&&!S.entries.length;
+    if(!force&&rmFull&&lcEmpty){cStatus('Lokal leer, Online hat Daten – „Online laden“ tippen (nichts überschrieben)');return}
+    if(!force&&rm.data&&(rm.data.meta.savedAt||0)>(S.meta.savedAt||0)){cStatus('Konflikt: Online-Stand ist neuer – „Online laden“ oder „Hochladen erzwingen“');return}
+    return cEnc(JSON.stringify(S),c.pass).then(function(enc){var b={message:'sync',content:btoa(enc)};if(rm.sha)b.sha=rm.sha;return cApi(c,'PUT',b)}).then(function(r){
+      if(!r.ok)throw new Error('Hochladen fehlgeschlagen ('+r.status+')');cStatus('Online gesichert '+new Date().toLocaleTimeString('de-AT'))})
+  }).catch(function(e){cStatus('Fehler: '+(e&&e.message||'Netzwerk'))}).then(function(){cloudBusy=false})}
+function cPull(force,quiet){
+  var c=cCfg();if(!cOn())return Promise.resolve();cStatus('prüft Online-Stand …');
+  return cGet(c).then(function(rm){
+    if(!rm.data){cStatus('Online noch leer');return S&&(S.people.length||S.entries.length)?cPush(false):0}
+    var o=normalize(rm.data);if(!(o.people&&o.products&&o.entries))throw new Error('Online-Datei unlesbar');
+    var lcEmpty=!S||(!S.people.length&&!S.entries.length);
+    if(force||lcEmpty||(o.meta.savedAt||0)>(S.meta.savedAt||0)){S=o;cloudSkip=true;save();cloudSkip=false;render();cStatus('Online geladen '+new Date().toLocaleTimeString('de-AT'));toast('Daten aus Online-Sicherung geladen')}
+    else if((o.meta.savedAt||0)<(S.meta.savedAt||0))return cPush(false);
+    else cStatus('Online aktuell')
+  }).catch(function(e){cStatus('Fehler: '+(e&&e.message||'Netzwerk'))})}
+function cKick(ms){if(cloudSkip||!cOn())return;clearTimeout(cloudTm);cloudTm=setTimeout(function(){cPush(false)},ms)}
+function cloudCard(){
+  var c=cCfg()||{},on=cOn();
+  return '<div class="sec">Online-Sicherung (verschlüsselt)</div><div class="card"><p class="small" style="margin:0 0 8px">Optional. Es wird nur ein <b>AES-256-verschlüsselter</b> Text in ein <b>privates</b> GitHub-Repo geschrieben, nie Klartext. Ohne Passphrase ist er wertlos – <b>Passphrase vergessen = Daten online unlesbar.</b> Token und Passphrase bleiben nur in diesem Browser. Vorher mit IT/Datenschutz klären, ob das erlaubt ist.</p>'+
+   '<input type="text" id="cRepo" placeholder="Repo, z. B. MST-9/strichliste-daten (privat!)" value="'+esc(c.repo||'')+'" autocomplete="off" autocapitalize="off" spellcheck="false">'+
+   '<div style="height:6px"></div><input type="password" id="cTok" placeholder="Token (nur Contents: Read/Write für dieses Repo)" value="'+esc(c.token||'')+'" autocomplete="off">'+
+   '<div style="height:6px"></div><input type="password" id="cPass" placeholder="Passphrase (mind. 12 Zeichen)" value="'+esc(c.pass||'')+'" autocomplete="off">'+
+   '<div class="chips" style="margin-top:8px"><button class="btn pri" data-act="cSave">'+(on?'Speichern':'Verbinden')+'</button>'+(on?'<button class="btn" data-act="cUp">Jetzt hochladen</button><button class="btn" data-act="cDown">Online laden</button><button class="btn dng" data-act="cOff">Trennen</button>':'')+'</div>'+
+   '<p class="small mute" id="cloudst" style="margin:8px 0 0">'+esc(cloudMsg||(on?'verbunden':'nicht verbunden'))+'</p></div>';
+}
 function save(){
   S.meta.savedAt=Date.now();
   if(window.desktop&&window.__desktopReady){try{window.desktop.save(JSON.stringify(S))}catch(e){}}
   if(fsReady){fsQ=JSON.stringify(S);fsFlush()}
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){lsOk=false}
   idb('readwrite',function(st){return st.put(JSON.parse(JSON.stringify(S)),'state3')}).then(function(){idbOk=true;badge()},function(){idbOk=false;badge()});
-  badge();
+  badge();cKick(15000);
 }
 function backupAge(){return S&&S.meta.lastExport?Math.floor((Date.now()-S.meta.lastExport)/864e5):null}
 function badge(){
@@ -478,6 +526,7 @@ function renderStamm(){
   h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="pickFile">Backup-Datei laden</button><button class="btn" data-act="import">Import (Text)</button><input type="file" id="fileIn" accept=".txt,.json,text/plain,application/json" hidden><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm" data-act="copyJson">Kopieren</button><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
     '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · '+(window.desktop?'Datendatei: '+esc(window.desktop.path||'?'):fsReady?'Ordner „'+esc(fsName)+'“':'Daten nur auf diesem Gerät')+'</p></div>';
+  h+=cloudCard();
   h+='<div class="sec">Speicher-Diagnose</div><div class="card"><div id="diag" class="small">prüfe …</div><button class="btn sm" data-act="diag" style="margin-top:8px">Neu prüfen</button></div>';
   $('#v-stamm').innerHTML=h;fillDiag();
   if(ui.exp&&ui.expFill){$('#jsonbox').value=JSON.stringify(S,null,1);ui.expFill=false}
@@ -635,6 +684,17 @@ var A={
     var p=re?fsh.requestPermission({mode:'readwrite'}).then(function(r){if(r!=='granted')throw {name:'AbortError'};return fsh}):window.showDirectoryPicker({mode:'readwrite'});
     p.then(function(h){idb('readwrite',function(st){return st.put(h,'fsdir')}).catch(function(){});return fsAttach(h)}).then(function(){render()},function(e){if(!e||e.name!=='AbortError')toast('Ordner nicht verfügbar oder nicht erlaubt')});
   },
+  cSave:function(){
+    var repo=($('#cRepo').value||'').trim(),tok=($('#cTok').value||'').trim(),pw=$('#cPass').value||'';
+    if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){toast('Repo im Format Besitzer/Name angeben');return}
+    if(!tok){toast('Token fehlt');return}
+    if(pw.length<12){toast('Passphrase: mindestens 12 Zeichen');return}
+    if(!(window.crypto&&crypto.subtle)){toast('Verschlüsselung in diesem Browser nicht verfügbar');return}
+    try{localStorage.setItem(CK,JSON.stringify({repo:repo,token:tok,pass:pw,on:true}))}catch(e){toast('Speichern der Zugangsdaten nicht möglich');return}
+    render();cPull(false)},
+  cUp:function(){if(!twice('cup','Nochmal tippen: überschreibt den Online-Stand'))return;cPush(true)},
+  cDown:function(){if(!twice('cdn','Nochmal tippen: ersetzt die lokalen Daten'))return;cPull(true)},
+  cOff:function(){if(!twice('coff','Nochmal tippen: Zugang aus diesem Browser löschen'))return;try{localStorage.removeItem(CK)}catch(e){}cloudMsg='';render()},
   togBak:function(){S.settings.noBak=!S.settings.noBak;save();render()},
   backup:backupNow,
   seedProducts:function(){
@@ -679,7 +739,7 @@ document.addEventListener('change',function(e){
   else if(c==='plist')prod(t.dataset.id).list=v;
   save();render();
 });
-document.addEventListener('visibilitychange',function(){if(document.hidden&&S)save()});
+document.addEventListener('visibilitychange',function(){if(document.hidden&&S){save();cKick(0)}});
 
 /* ---------- Start ---------- */
 try{localStorage.removeItem('strichliste.v1');localStorage.removeItem('strichliste.v2')}catch(e){}
@@ -710,6 +770,7 @@ if(window.desktop&&window.desktop.load){
 }else startApp();
 fsInit();
 askPersist();
+setTimeout(function(){if(cOn())cPull(false)},1500);
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!inFrame){
   navigator.serviceWorker.register('sw.js').then(function(reg){
     reg.addEventListener('updatefound',function(){var nw=reg.installing;if(nw)nw.addEventListener('statechange',function(){if(nw.state==='installed'&&navigator.serviceWorker.controller)toast('Update geladen – App einmal schließen und neu öffnen')})});
