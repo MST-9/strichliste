@@ -136,7 +136,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.1.0';
+var KEY='strichliste.v3', VERSION='1.1.1';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -182,6 +182,7 @@ function save(){
 function backupAge(){return S&&S.meta.lastExport?Math.floor((Date.now()-S.meta.lastExport)/864e5):null}
 function badge(){
   var b=$('#stor');if(!b||!S)return;
+  if(window.desktop){b.style.display='none';return}
   var ok=lsOk||idbOk,a=backupAge(),stale=a===null||a>7;
   b.textContent=!ok?'⚠ nur Sitzung':'Backup: '+(a===null?'nie':a===0?'heute':'vor '+a+' T');
   b.classList.toggle('warn',!ok||stale);
@@ -263,6 +264,7 @@ var tt;function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on')
 function seg(act,key,items){return '<div class="seg">'+items.map(function(i){return '<button data-act="'+act+'" data-k="'+i[0]+'" class="'+(ui[key]===i[0]?'on':'')+'">'+i[1]+'</button>'}).join('')+'</div>'}
 function av(p){return '<span class="av">'+esc(p.rank||'·')+'</span>'}
 function backupNote(){
+  if(window.desktop)return '';
   var a=backupAge();
   if(!S.entries.length||(a!==null&&a<=7))return '';
   return '<div class="note red">💾 Letztes Backup: <b>'+(a===null?'nie':'vor '+a+' Tagen')+'</b>. <button class="btn sm" data-act="backup">Jetzt sichern</button></div>';
@@ -372,7 +374,7 @@ function renderPrint(){
 
 function renderStamm(){
   var a=backupAge();
-  var h='<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
+  var h=window.desktop?'':'<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
     '<div class="small" style="margin-top:4px"><b>Letztes Backup:</b> '+(a===null?'noch nie':a===0?'heute':'vor '+a+' Tagen')+'</div>'+
     '<button class="btn pri" data-act="backup" style="width:100%;margin-top:10px;padding:11px">💾 Backup sichern (Teilen → In Dateien sichern)</button>'+
     '<p class="small mute" style="margin:8px 0 0">iPhone: Safari → Teilen → <b>Zum Home-Bildschirm</b>. Nur als installierte Web-App räumt iOS die Daten nicht nach 7 Tagen Nichtbenutzung weg. Automatisch Dateien schreiben darf iOS nicht, darum die Backup-Erinnerung.</p></div>';
@@ -538,11 +540,11 @@ var A={
   },
   closeYear:function(b){
     var y=b.dataset.y;
-    if(backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
+    if(!window.desktop&&backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
     if(!twice('cy'+y,'Nochmal tippen: Jahr '+y+' abschließen'))return;
     var r=closeYear(y);
     if(!r){toast('Abgebrochen: Salden hätten sich geändert');return}
-    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet – bitte neues Backup sichern');
+    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet'+(window.desktop?'':' – bitte neues Backup sichern'));
   },
   backup:backupNow,
   seedProducts:function(){
