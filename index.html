@@ -140,7 +140,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.2.7';
+var KEY='strichliste.v3', VERSION='1.2.8';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -323,7 +323,7 @@ function backupNote(){
 
 function renderErf(){
   if(!S.people.length){
-    $('#v-erf').innerHTML='<div class="card"><h2>Willkommen</h2><p class="small" style="margin:0 0 10px">Noch keine Personen angelegt. Ablauf: Produkte und Preise anlegen, Personen eintragen, dann erfassen. Alle Daten bleiben auf diesem Gerät.</p><div class="chips"><button class="btn pri" data-act="tab" data-v="stamm">Personen &amp; Produkte anlegen</button><button class="btn" data-act="seedProducts">Beispielprodukte anlegen</button><button class="btn" data-act="loadDemo">Demo-Daten laden</button><button class="btn" data-act="pickFile">Backup-Datei laden</button></div><input type="file" id="fileIn" accept=".json,application/json,text/plain" hidden><p class="small mute" style="margin:10px 0 0">Beispielprodukte haben Platzhalterpreise – unter Verwalten anpassen. Demo-Daten kannst du jederzeit mit „Alles leeren“ löschen.</p></div>';
+    $('#v-erf').innerHTML='<div class="card"><h2>Willkommen</h2><p class="small" style="margin:0 0 10px">Noch keine Personen angelegt. Ablauf: Produkte und Preise anlegen, Personen eintragen, dann erfassen. Alle Daten bleiben auf diesem Gerät.</p><div class="chips"><button class="btn pri" data-act="tab" data-v="stamm">Personen &amp; Produkte anlegen</button><button class="btn" data-act="seedProducts">Beispielprodukte anlegen</button><button class="btn" data-act="loadDemo">Demo-Daten laden</button><button class="btn" data-act="pickFile">Backup-Datei laden</button></div><input type="file" id="fileIn" accept=".txt,.json,text/plain,application/json" hidden><p class="small mute" style="margin:10px 0 0">Beispielprodukte haben Platzhalterpreise – unter Verwalten anpassen. Demo-Daten kannst du jederzeit mit „Alles leeren“ löschen.</p></div>';
     return;
   }
   var h=backupNote()+seg('mode','mode',[['single','Einzeln'],['matrix','Matrix (Papierliste nachtragen)']]);
@@ -446,7 +446,7 @@ function renderStamm(){
   h+='<div class="sec">Jahresabschluss</div><div class="card"><p class="small" style="margin:0 0 10px">Verdichtet die Einzelbuchungen eines vergangenen Jahres zu einer Summe je Person und Produkt. Salden, Abrechnung und Scoreboard (Jahr/Gesamt) bleiben gleich. Danach sind einzelne Buchungen dieses Jahres nicht mehr einzeln löschbar. Vorher heute ein Backup sichern.</p>'+
     (cy.length?cy.map(function(x){return '<div class="row" style="margin:0 0 6px"><div class="grow"><b>'+x[0]+'</b> <span class="small mute">· '+x[1]+' Einzelbuchungen</span></div><button class="btn sm" data-act="closeYear" data-y="'+x[0]+'">Abschließen</button></div>'}).join(''):'<p class="small mute" style="margin:0">Kein vergangenes Jahr mit Einzelbuchungen.</p>')+
     (done.length?'<p class="small mute" style="margin:8px 0 0">Abgeschlossen: '+done.join(', ')+'</p>':'')+'</div>';
-  h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="pickFile">Backup-Datei laden</button><button class="btn" data-act="import">Import (Text)</button><input type="file" id="fileIn" accept=".json,application/json,text/plain" hidden><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
+  h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="pickFile">Backup-Datei laden</button><button class="btn" data-act="import">Import (Text)</button><input type="file" id="fileIn" accept=".txt,.json,text/plain,application/json" hidden><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm" data-act="copyJson">Kopieren</button><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
     '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · '+(window.desktop?'Datendatei: '+esc(window.desktop.path||'?'):fsReady?'Ordner „'+esc(fsName)+'“':'Daten nur auf diesem Gerät')+'</p></div>';
   $('#v-stamm').innerHTML=h;
@@ -463,15 +463,15 @@ function render(){
 
 /* ---------- Backup-Datei ---------- */
 function backupNow(){
-  var json=JSON.stringify(S,null,1),name='strichliste-backup-'+dayKey(Date.now())+'.json';
+  var json=JSON.stringify(S,null,1),name='strichliste-backup-'+dayKey(Date.now())+'.txt';
   function mark(){S.meta.lastExport=Date.now();save();render();toast('Backup erstellt')}
   function dl(){
     if(inFrame){toast('Vorschau: Download gesperrt – lokal öffnen oder „Export als Text“');return}
-    try{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();mark()}
+    try{var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([json],{type:'text/plain'}));a.download=name;document.body.appendChild(a);a.click();a.remove();mark()}
     catch(e){toast('Download nicht möglich – „Export als Text“ nutzen')}
   }
   try{
-    var f=new File([json],name,{type:'application/json'});
+    var f=new File([json],name,{type:'text/plain'});
     if(!inFrame&&navigator.canShare&&navigator.canShare({files:[f]})){
       navigator.share({files:[f],title:name}).then(mark,function(err){if(!err||err.name!=='AbortError')dl()});return;
     }
