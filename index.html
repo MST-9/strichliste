@@ -136,7 +136,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.2.2';
+var KEY='strichliste.v3', VERSION='1.2.3';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -174,6 +174,7 @@ function idb(mode,fn){return new Promise(function(res,rej){
   }catch(e){rej(e)}})}
 /* ---------- Ordner-Speicher (Browser, Chrome/Edge) ---------- */
 var fsh=null,fsReady=false,fsName='',fsQ=null,fsBusy=false,fsState=(window.showDirectoryPicker&&!window.desktop)?'none':'na';
+function noBak(){return !!(S&&S.settings&&S.settings.noBak)}
 function fileMode(){return !!window.desktop||fsReady}
 function fsRead(n){return fsh.getFileHandle(n).then(function(h){return h.getFile()}).then(function(f){return f.text()}).catch(function(){return null})}
 function fsPut(n,t){return fsh.getFileHandle(n,{create:true}).then(function(h){return h.createWritable()}).then(function(w){return w.write(t).then(function(){return w.close()})})}
@@ -224,7 +225,8 @@ function save(){
 function backupAge(){return S&&S.meta.lastExport?Math.floor((Date.now()-S.meta.lastExport)/864e5):null}
 function badge(){
   var b=$('#stor');if(!b||!S)return;
-  if(window.desktop){b.style.display='none';return}
+  if(window.desktop||(noBak()&&!fsReady)){b.style.display='none';return}
+  b.style.display='';
   if(fsReady){b.textContent='Datei ✓';b.classList.remove('warn');return}
   if(fsState==='needs'){b.textContent='Ordner verbinden';b.classList.add('warn');return}
   var ok=lsOk||idbOk,a=backupAge(),stale=a===null||a>7;
@@ -308,7 +310,7 @@ var tt;function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on')
 function seg(act,key,items){return '<div class="seg">'+items.map(function(i){return '<button data-act="'+act+'" data-k="'+i[0]+'" class="'+(ui[key]===i[0]?'on':'')+'">'+i[1]+'</button>'}).join('')+'</div>'}
 function av(p){return '<span class="av">'+esc(p.rank||'·')+'</span>'}
 function backupNote(){
-  if(window.desktop||fsReady)return '';
+  if(window.desktop||fsReady||noBak())return '';
   if(fsState==='needs')return '<div class="note red">📁 Ordner-Speicher getrennt. <button class="btn sm" data-act="fsConnect" data-m="re">Wieder verbinden</button></div>';
   var a=backupAge();
   if(!S.entries.length||(a!==null&&a<=7))return '';
@@ -419,7 +421,7 @@ function renderPrint(){
 
 function renderStamm(){
   var a=backupAge();
-  var h=fileCard()+(fileMode()?'':'<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
+  var h=fileCard()+(window.desktop?'':'<div class="card"><div class="small"><b>Backup-Erinnerung:</b> '+(noBak()?'ausgeblendet':'an')+'. Ohne Ordner-Speicher liegen die Daten nur im Browser – bei gelöschtem Browserprofil sind sie weg.</div><button class="btn" data-act="togBak" style="margin-top:8px">'+(noBak()?'Erinnerung wieder einblenden':'Erinnerung ausblenden')+'</button></div>')+(fileMode()?'':'<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
     '<div class="small" style="margin-top:4px"><b>Letztes Backup:</b> '+(a===null?'noch nie':a===0?'heute':'vor '+a+' Tagen')+'</div>'+
     '<button class="btn pri" data-act="backup" style="width:100%;margin-top:10px;padding:11px">💾 Backup sichern (Teilen → In Dateien sichern)</button>'+
     '<p class="small mute" style="margin:8px 0 0">iPhone: Safari → Teilen → <b>Zum Home-Bildschirm</b>. Nur als installierte Web-App räumt iOS die Daten nicht nach 7 Tagen Nichtbenutzung weg. Automatisch Dateien schreiben darf iOS nicht, darum die Backup-Erinnerung.</p></div>');
@@ -585,17 +587,18 @@ var A={
   },
   closeYear:function(b){
     var y=b.dataset.y;
-    if(!fileMode()&&backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
+    if(!fileMode()&&!noBak()&&backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
     if(!twice('cy'+y,'Nochmal tippen: Jahr '+y+' abschließen'))return;
     var r=closeYear(y);
     if(!r){toast('Abgebrochen: Salden hätten sich geändert');return}
-    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet'+(fileMode()?'':' – bitte neues Backup sichern'));
+    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet'+((fileMode()||noBak())?'':' – bitte neues Backup sichern'));
   },
   fsConnect:function(b){
     var re=b&&b.dataset.m==='re'&&fsh;
     var p=re?fsh.requestPermission({mode:'readwrite'}).then(function(r){if(r!=='granted')throw {name:'AbortError'};return fsh}):window.showDirectoryPicker({mode:'readwrite'});
     p.then(function(h){idb('readwrite',function(st){return st.put(h,'fsdir')}).catch(function(){});return fsAttach(h)}).then(function(){render()},function(e){if(!e||e.name!=='AbortError')toast('Ordner nicht verfügbar oder nicht erlaubt')});
   },
+  togBak:function(){S.settings.noBak=!S.settings.noBak;save();render()},
   backup:backupNow,
   seedProducts:function(){
     [['Kaffee',50,'A','☕'],['Twix',70,'A','🍫'],['Mineral',100,'B','💧'],['Cola',120,'B','🥤'],['Bier',150,'B','🍺'],['Pizza',350,'B','🍕']].forEach(function(x){S.products.push({id:'pr_'+uid(),name:x[0],price:x[1],list:x[2],icon:x[3],active:true})});
