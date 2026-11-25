@@ -140,7 +140,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.3.0';
+var KEY='strichliste.v3', VERSION='1.3.1';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -440,7 +440,7 @@ function renderStamm(){
     S.products.map(function(p){
       return '<div class="edit"><input type="text" data-chg="prname" data-id="'+p.id+'" value="'+esc(p.name)+'"><input type="number" step="0.05" min="0" data-chg="price" data-id="'+p.id+'" value="'+(p.price/100).toFixed(2)+'"><select data-chg="plist" data-id="'+p.id+'"><option value="A"'+(p.list==='A'?' selected':'')+'>Liste 1</option><option value="B"'+(p.list==='B'?' selected':'')+'>Liste 2</option><option value="C"'+(p.list==='C'?' selected':'')+'>Liste 3</option></select><button class="tg '+(p.active?'on':'')+'" data-act="togPr" data-id="'+p.id+'" aria-label="aktiv"></button></div>';
     }).join('')+
-    '<div class="row" style="margin-top:8px"><input type="text" id="newPr" placeholder="Neues Produkt"><input type="number" id="newPrice" step="0.05" min="0" placeholder="€" style="width:90px"><button class="btn pri" data-act="addPr">+</button></div>'+
+    '<div class="row" style="margin-top:8px"><input type="text" id="newPr" placeholder="Neues Produkt"><input type="number" id="newPrice" step="0.05" min="0" placeholder="€" style="width:80px"><select id="newList" style="width:84px">'+['A','B','C'].map(function(l,i){return '<option value="'+l+'"'+((ui.newList||'B')===l?' selected':'')+'>Liste '+(i+1)+'</option>'}).join('')+'</select><button class="btn pri" data-act="addPr">+</button></div>'+
     '<p class="small mute" style="margin:8px 0 0">Preisänderungen gelten nur für neue Striche – alte Buchungen behalten ihren Preis.</p></div>';
 
   var cy=closableYears(),done=(S.meta.closedYears||[]);
@@ -584,7 +584,7 @@ var A={
   addPr:function(){
     var n=$('#newPr').value.trim(),c=Math.round(parseFloat(($('#newPrice').value||'').replace(',','.'))*100);
     if(!n||!(c>=0)){toast('Name und Preis angeben');return}
-    S.products.push({id:'pr_'+uid(),name:n,price:c,list:'B',icon:'🛒',active:true});save();render();
+    S.products.push({id:'pr_'+uid(),name:n,price:c,list:$('#newList').value,icon:'🛒',active:true});ui.newList=$('#newList').value;save();render();
   },
   pickFile:function(){
     if((S.people.length||S.entries.length)&&!twice('pickfile','Ersetzt alle aktuellen Daten – nochmal tippen zum Fortfahren'))return;
