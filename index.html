@@ -140,7 +140,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.2.6';
+var KEY='strichliste.v3', VERSION='1.2.7';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -408,7 +408,7 @@ function sheetHtml(title,list,num){
   var cell=list.map(function(){return '<td></td>'}).join('');
   var rows=ppl.map(function(p){return '<tr><td class="nm">'+esc(lbl(p))+'</td>'+cell+'<td class="nt"></td></tr>'}).join('');
   for(var i=0;i<sp;i++)rows+='<tr><td class="nm"></td>'+cell+'<td class="nt"></td></tr>';
-  return '<section class="sheet"><div class="sh-head"><h2>Liste '+num+' · '+esc(title)+'</h2><span>'+esc(S.settings.title)+'</span></div><table class="st"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table><p class="foot">Pro Konsum einen Strich. Gedruckt am '+new Date().toLocaleDateString('de-AT')+'.</p></section>';
+  return '<section class="sheet"><div class="sh-head"><h2>Liste '+num+'</h2><span>'+esc(S.settings.title)+'</span></div><table class="st"><thead>'+head+'</thead><tbody>'+rows+'</tbody></table><p class="foot">Pro Konsum einen Strich. Gedruckt am '+new Date().toLocaleDateString('de-AT')+'.</p></section>';
 }
 function renderPrint(){
   $('#pg').textContent='@page{size:A4 '+S.settings.orient+';margin:0}';
@@ -500,7 +500,7 @@ function buildPdf(){
     var ps=L[1],colW=(W-2*M-NAMEW-PAYW)/ps.length,idx=0,first=true;
     while(first||idx<rows.length){
       var c='0.6 w 0 G\n',y=YTOP;
-      c+=txt(M,H-M-12,'Liste '+L[2]+' · '+L[0]+(first?'':' (Forts.)'),14,true);
+      c+=txt(M,H-M-12,'Liste '+L[2]+(first?'':' (Forts.)'),14,true);
       var ttl=fit(S.settings.title||'',W/2,10,false);c+=txt(W-M-tw(ttl,10,false),H-M-12,ttl,10,false);
       first=false;
       c+=box(M,y-HEADH,W-2*M,HEADH,true);
