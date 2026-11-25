@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.4.0';
+var KEY='strichliste.v3', VERSION='1.4.1';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -378,7 +378,7 @@ function backupNote(){
   if(fsState==='needs')return '<div class="note red">📁 Ordner-Speicher getrennt. <button class="btn sm" data-act="fsConnect" data-m="re">Wieder verbinden</button></div>';
   var a=backupAge();
   if(!S.entries.length||(a!==null&&a<=7))return '';
-  return '<div class="note red">💾 Letztes Backup: <b>'+(a===null?'nie':'vor '+a+' Tagen')+'</b>. <button class="btn sm" data-act="backup">Jetzt sichern</button></div>';
+  return '<div class="note red">💾 Letztes Backup: <b>'+(a===null?'nie':'vor '+a+' Tagen')+'</b>. <button class="btn sm" data-act="backup">Als Datei laden</button> <button class="btn sm" data-act="backupCopy">Kopieren</button></div>';
 }
 
 function renderErf(){
@@ -704,6 +704,9 @@ var A={
   loadDemo:function(){S=demo();save();render();toast('Demo-Daten geladen')},
   export:function(){ui.exp=true;ui.expFill=true;render()},
   import:function(){ui.exp=true;ui.expFill=false;render()},
+  backupCopy:function(){var v=JSON.stringify(S,null,1);
+    var ok=function(){S.meta.lastExport=Date.now();save();render();toast('Kopiert – jetzt in Editor/Mail einfügen und speichern')},no=function(){toast('Kopieren blockiert – unter Verwalten „Export als Text“ nutzen')};
+    try{navigator.clipboard.writeText(v).then(ok,no)}catch(e){no()}},
   copyJson:function(){var v=$('#jsonbox').value;try{navigator.clipboard.writeText(v).then(function(){toast('Kopiert')},function(){toast('Kopieren blockiert – Text manuell markieren')})}catch(e){toast('Kopieren blockiert – Text manuell markieren')}},
   doImport:function(){
     try{var o=JSON.parse($('#jsonbox').value);if(!o.people||!o.products||!o.entries)throw 0;S=normalize(o);save();ui.exp=false;render();toast('Importiert')}
