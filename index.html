@@ -136,7 +136,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.1.3';
+var KEY='strichliste.v3', VERSION='1.2.0';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -172,9 +172,51 @@ function idb(mode,fn){return new Promise(function(res,rej){
     r.onsuccess=function(){var db=r.result,tx=db.transaction('kv',mode),q=fn(tx.objectStore('kv'));
       tx.oncomplete=function(){db.close();res(q&&q.result)};tx.onerror=tx.onabort=function(){db.close();rej(tx.error)}};
   }catch(e){rej(e)}})}
+/* ---------- Ordner-Speicher (Browser, Chrome/Edge) ---------- */
+var fsh=null,fsReady=false,fsName='',fsQ=null,fsBusy=false,fsState=(window.showDirectoryPicker&&!window.desktop)?'none':'na';
+function fileMode(){return !!window.desktop||fsReady}
+function fsRead(n){return fsh.getFileHandle(n).then(function(h){return h.getFile()}).then(function(f){return f.text()}).catch(function(){return null})}
+function fsPut(n,t){return fsh.getFileHandle(n,{create:true}).then(function(h){return h.createWritable()}).then(function(w){return w.write(t).then(function(){return w.close()})})}
+function fsFlush(){
+  if(fsBusy||fsQ===null)return;fsBusy=true;var t=fsQ;fsQ=null;
+  fsRead('strichliste.json').then(function(old){return old?fsPut('strichliste.bak.json',old):0}).then(function(){return fsPut('strichliste.json',t)})
+  .then(function(){fsBusy=false;badge();if(fsQ!==null)fsFlush()},function(){fsBusy=false;fsReady=false;fsState='needs';badge();toast('Ordner nicht mehr beschreibbar – unter Verwalten neu verbinden')});
+}
+function fsAttach(h){
+  fsh=h;fsName=h.name;
+  return fsRead('strichliste.json').then(function(txt){
+    var o=null;if(txt){try{o=normalize(JSON.parse(txt));if(!(o.people&&o.products&&o.entries))o=null}catch(e){o=null}}
+    if(txt&&!o){fsReady=false;fsState='err';toast('Datei im Ordner unlesbar – nichts überschrieben');return}
+    var empty=!S||(!S.people.length&&!S.entries.length);
+    if(o&&(empty||(o.meta.savedAt||0)>(S.meta.savedAt||0))){S=o;toast('Daten aus Ordner geladen')}
+    fsReady=true;fsState='ready';save();
+  });
+}
+function fsInit(n){
+  if(fsState==='na')return;
+  if(!S){if((n||0)<40)setTimeout(function(){fsInit((n||0)+1)},150);return}
+  idb('readonly',function(st){return st.get('fsdir')}).then(function(h){
+    if(!h)return;
+    return h.queryPermission({mode:'readwrite'}).then(function(r){
+      if(r==='granted')return fsAttach(h).then(render);
+      fsh=h;fsName=h.name;fsState='needs';badge();render();
+    });
+  }).catch(function(){});
+}
+function fileCard(){
+  if(window.desktop||fsState==='na')return '';
+  var h='<div class="card"><div class="small"><b>Datei-Speicher:</b> ';
+  if(fsReady)h+='Ordner „'+esc(fsName)+'“ ✓ – <code>strichliste.json</code> + <code>.bak.json</code> werden bei jeder Änderung geschrieben.</div><button class="btn" data-act="fsConnect" data-m="pick" style="margin-top:8px">Anderen Ordner wählen</button>';
+  else if(fsState==='needs')h+='<span style="color:var(--warn)">Ordner „'+esc(fsName)+'“ muss neu freigegeben werden</span> (Browser verlangt das nach dem Schließen).</div><button class="btn pri" data-act="fsConnect" data-m="re" style="width:100%;margin-top:8px;padding:11px">Ordner wieder verbinden</button>';
+  else if(fsState==='err')h+='<span style="color:var(--warn)">Datei im Ordner unlesbar – nichts überschrieben.</span></div><button class="btn" data-act="fsConnect" data-m="pick" style="margin-top:8px">Anderen Ordner wählen</button>';
+  else h+='noch kein Ordner gewählt. Daten liegen nur im Browser.</div><button class="btn pri" data-act="fsConnect" data-m="pick" style="width:100%;margin-top:8px;padding:11px">Ordner für Datei-Speicher wählen</button><p class="small mute" style="margin:8px 0 0">Am besten einen eigenen Unterordner anlegen (z. B. Dokumente\\Strichliste). Chrome/Edge erlauben nicht den Dokumente-, Downloads- oder Desktop-Ordner selbst.</p>';
+  return h+'</div>';
+}
+
 function save(){
   S.meta.savedAt=Date.now();
   if(window.desktop&&window.__desktopReady){try{window.desktop.save(JSON.stringify(S))}catch(e){}}
+  if(fsReady){fsQ=JSON.stringify(S);fsFlush()}
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){lsOk=false}
   idb('readwrite',function(st){return st.put(JSON.parse(JSON.stringify(S)),'state3')}).then(function(){idbOk=true;badge()},function(){idbOk=false;badge()});
   badge();
@@ -183,6 +225,8 @@ function backupAge(){return S&&S.meta.lastExport?Math.floor((Date.now()-S.meta.l
 function badge(){
   var b=$('#stor');if(!b||!S)return;
   if(window.desktop){b.style.display='none';return}
+  if(fsReady){b.textContent='Datei ✓';b.classList.remove('warn');return}
+  if(fsState==='needs'){b.textContent='Ordner verbinden';b.classList.add('warn');return}
   var ok=lsOk||idbOk,a=backupAge(),stale=a===null||a>7;
   b.textContent=!ok?'⚠ nur Sitzung':'Backup: '+(a===null?'nie':a===0?'heute':'vor '+a+' T');
   b.classList.toggle('warn',!ok||stale);
@@ -264,7 +308,8 @@ var tt;function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on')
 function seg(act,key,items){return '<div class="seg">'+items.map(function(i){return '<button data-act="'+act+'" data-k="'+i[0]+'" class="'+(ui[key]===i[0]?'on':'')+'">'+i[1]+'</button>'}).join('')+'</div>'}
 function av(p){return '<span class="av">'+esc(p.rank||'·')+'</span>'}
 function backupNote(){
-  if(window.desktop)return '';
+  if(window.desktop||fsReady)return '';
+  if(fsState==='needs')return '<div class="note red">📁 Ordner-Speicher getrennt. <button class="btn sm" data-act="fsConnect" data-m="re">Wieder verbinden</button></div>';
   var a=backupAge();
   if(!S.entries.length||(a!==null&&a<=7))return '';
   return '<div class="note red">💾 Letztes Backup: <b>'+(a===null?'nie':'vor '+a+' Tagen')+'</b>. <button class="btn sm" data-act="backup">Jetzt sichern</button></div>';
@@ -374,10 +419,10 @@ function renderPrint(){
 
 function renderStamm(){
   var a=backupAge();
-  var h=window.desktop?'':'<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
+  var h=fileCard()+(fileMode()?'':'<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
     '<div class="small" style="margin-top:4px"><b>Letztes Backup:</b> '+(a===null?'noch nie':a===0?'heute':'vor '+a+' Tagen')+'</div>'+
     '<button class="btn pri" data-act="backup" style="width:100%;margin-top:10px;padding:11px">💾 Backup sichern (Teilen → In Dateien sichern)</button>'+
-    '<p class="small mute" style="margin:8px 0 0">iPhone: Safari → Teilen → <b>Zum Home-Bildschirm</b>. Nur als installierte Web-App räumt iOS die Daten nicht nach 7 Tagen Nichtbenutzung weg. Automatisch Dateien schreiben darf iOS nicht, darum die Backup-Erinnerung.</p></div>';
+    '<p class="small mute" style="margin:8px 0 0">iPhone: Safari → Teilen → <b>Zum Home-Bildschirm</b>. Nur als installierte Web-App räumt iOS die Daten nicht nach 7 Tagen Nichtbenutzung weg. Automatisch Dateien schreiben darf iOS nicht, darum die Backup-Erinnerung.</p></div>');
   h+='<div class="sec" style="margin-top:0">Personen ('+S.people.filter(function(p){return p.active}).length+' aktiv)</div><div class="card">'+
     S.people.slice().sort(cmpP).map(function(p){
       var used=S.entries.some(function(e){return e.p===p.id});
@@ -397,7 +442,7 @@ function renderStamm(){
     (done.length?'<p class="small mute" style="margin:8px 0 0">Abgeschlossen: '+done.join(', ')+'</p>':'')+'</div>';
   h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="pickFile">Backup-Datei laden</button><button class="btn" data-act="import">Import (Text)</button><input type="file" id="fileIn" accept=".json,application/json,text/plain" hidden><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm" data-act="copyJson">Kopieren</button><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
-    '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · '+(window.desktop?'Datendatei: '+esc(window.desktop.path||'?'):'Daten nur auf diesem Gerät')+'</p></div>';
+    '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · '+(window.desktop?'Datendatei: '+esc(window.desktop.path||'?'):fsReady?'Ordner „'+esc(fsName)+'“':'Daten nur auf diesem Gerät')+'</p></div>';
   $('#v-stamm').innerHTML=h;
   if(ui.exp&&ui.expFill){$('#jsonbox').value=JSON.stringify(S,null,1);ui.expFill=false}
 }
@@ -540,11 +585,16 @@ var A={
   },
   closeYear:function(b){
     var y=b.dataset.y;
-    if(!window.desktop&&backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
+    if(!fileMode()&&backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
     if(!twice('cy'+y,'Nochmal tippen: Jahr '+y+' abschließen'))return;
     var r=closeYear(y);
     if(!r){toast('Abgebrochen: Salden hätten sich geändert');return}
-    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet'+(window.desktop?'':' – bitte neues Backup sichern'));
+    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet'+(fileMode()?'':' – bitte neues Backup sichern'));
+  },
+  fsConnect:function(b){
+    var re=b&&b.dataset.m==='re'&&fsh;
+    var p=re?fsh.requestPermission({mode:'readwrite'}).then(function(r){if(r!=='granted')throw {name:'AbortError'};return fsh}):window.showDirectoryPicker({mode:'readwrite'});
+    p.then(function(h){idb('readwrite',function(st){return st.put(h,'fsdir')}).catch(function(){});return fsAttach(h)}).then(function(){render()},function(e){if(!e||e.name!=='AbortError')toast('Ordner nicht verfügbar oder nicht erlaubt')});
   },
   backup:backupNow,
   seedProducts:function(){
@@ -617,6 +667,7 @@ if(window.desktop&&window.desktop.load){
     startApp();
   },function(){startApp()});
 }else startApp();
+fsInit();
 askPersist();
 if('serviceWorker' in navigator&&/^https?:$/.test(location.protocol)&&!inFrame){
   navigator.serviceWorker.register('sw.js').then(function(reg){

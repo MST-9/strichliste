@@ -1,5 +1,5 @@
 // Version hier UND in index.html (VERSION) hochzählen, sonst bekommen Geräte kein Update.
-const V = 'strichliste-1.1.3';
+const V = 'strichliste-1.2.0';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'icons/icon-180.png', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png'];
 
 self.addEventListener('install', e => {
