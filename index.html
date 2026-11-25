@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.5.0';
+var KEY='strichliste.v3', VERSION='1.5.2';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -179,7 +179,6 @@ function idb(mode,fn){return new Promise(function(res,rej){
     r.onsuccess=function(){var db=r.result,tx=db.transaction('kv',mode),q=fn(tx.objectStore('kv'));
       tx.oncomplete=function(){db.close();res(q&&q.result)};tx.onerror=tx.onabort=function(){db.close();rej(tx.error)}};
   }catch(e){rej(e)}})}
-function noBak(){return !!(S&&S.settings&&S.settings.noBak)}
 function save(){
   S.meta.savedAt=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){lsOk=false}
@@ -189,7 +188,6 @@ function save(){
 function backupAge(){return S&&S.meta.lastExport?Math.floor((Date.now()-S.meta.lastExport)/864e5):null}
 function badge(){
   var b=$('#stor');if(!b||!S)return;
-  if(noBak()){b.style.display='none';return}
   b.style.display='';
   var ok=lsOk||idbOk,a=backupAge(),stale=a===null||a>7;
   b.textContent=!ok?'⚠ nur Sitzung':'Backup: '+(a===null?'nie':a===0?'heute':'vor '+a+' T');
@@ -197,38 +195,6 @@ function badge(){
 }
 function askPersist(){try{if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().then(function(ok){persisted=ok;badge()},function(){})}}catch(e){}}
 
-/* ---------- Demo-Daten ---------- */
-function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-function demo(){
-  var r=mulberry(7);
-  var pp=[['Obstlt','Pirker'],['Mjr','Wiegele'],['Hptm','Ortner'],['Olt','Kofler'],['Fhr','Brandstätter'],['Lt','Hafner'],['OStv','Zwischenberger'],['StWm','Egger'],['OWm','Rauter'],['Wm','Sablatnig'],['Zgsfhr','Oberlerchner'],['Kpl','Mayer'],['Gfr','Trattnig'],['Rekr','Lackner']];
-  var prods=[['Kaffee',60,'A','☕',.62],['Twix',70,'A','🍫',.22],['Mineral',100,'B','💧',.25],['Cola',120,'B','🥤',.15],['Eistee',120,'B','🧃',.1],['Bier',150,'B','🍺',.06],['Energy',180,'B','⚡',.08],['Pizza',350,'B','🍕',.04]]
-    .map(function(p){return {id:'pr_'+p[0].toLowerCase(),name:p[0],price:p[1],list:p[2],icon:p[3],active:true,w:p[4]}});
-  var people=pp.map(function(n,i){return {id:'pe_'+i,rank:n[0],last:n[1],active:i!==pp.length-1}});
-  var wt={};people.forEach(function(p){wt[p.id]={};prods.forEach(function(pr){wt[p.id][pr.id]=Math.min(.95,pr.w*(.2+r()*1.8))})});
-  var entries=[],now=new Date();
-  for(var i=95;i>=0;i--){
-    var dt=new Date(now.getFullYear(),now.getMonth(),now.getDate()-i,12);
-    if(dt.getDay()===0||dt.getDay()===6)continue;
-    people.forEach(function(p){
-      if(r()>.78)return;
-      prods.forEach(function(pr){
-        if(r()<wt[p.id][pr.id]){var q=1+(r()<.25?1:0);entries.push({id:uid(),p:p.id,pr:pr.id,q:q,price:pr.price,d:dayKey(dt),t:dt.getTime()})}
-      });
-    });
-  }
-  var payments=[],c1=Date.now()-30*864e5,c2=Date.now()-10*864e5;
-  people.forEach(function(p,i){
-    if(i===2||i===7)return;
-    var s1=0,s2=0;
-    entries.forEach(function(e){if(e.p!==p.id)return;if(e.t<c1)s1+=val(e);else if(e.t<c2)s2+=val(e)});
-    if(s1>0)payments.push({id:uid(),p:p.id,amt:s1,d:dayKey(c1),t:c1});
-    if(i%3===0&&s2>0)payments.push({id:uid(),p:p.id,amt:s2,d:dayKey(c2),t:c2});
-  });
-  prods.forEach(function(p){delete p.w});
-  return {people:people,products:prods,entries:entries,payments:payments,meta:{savedAt:0,lastExport:0},
-    settings:{title:new Date().toLocaleDateString('de-AT',{month:'long',year:'numeric'}),orient:'portrait',spare:3,sort:'name'}};
-}
 
 /* ---------- Logik ---------- */
 function cmpP(a,b){if(S.settings.sort==='rank'){var d=rankIdx(b.rank)-rankIdx(a.rank);if(d)return d}return a.last.localeCompare(b.last,'de')||rankIdx(b.rank)-rankIdx(a.rank)}
@@ -281,7 +247,6 @@ var tt;function toast(m){var t=$('#toast');t.textContent=m;t.classList.add('on')
 function seg(act,key,items){return '<div class="seg">'+items.map(function(i){return '<button data-act="'+act+'" data-k="'+i[0]+'" class="'+(ui[key]===i[0]?'on':'')+'">'+i[1]+'</button>'}).join('')+'</div>'}
 function av(p){return '<span class="av">'+esc(p.rank||'·')+'</span>'}
 function backupNote(){
-  if(noBak())return '';
   var a=backupAge();
   if(!S.entries.length||(a!==null&&a<=7))return '';
   return '<div class="note red">💾 Letztes Backup: <b>'+(a===null?'nie':'vor '+a+' Tagen')+'</b>. <button class="btn sm" data-act="backup">Als Datei laden</button> <button class="btn sm" data-act="backupCopy">Kopieren</button></div>';
@@ -289,7 +254,7 @@ function backupNote(){
 
 function renderErf(){
   if(!S.people.length){
-    $('#v-erf').innerHTML='<div class="card"><h2>Willkommen</h2><p class="small" style="margin:0 0 10px">Noch keine Personen angelegt. Ablauf: Produkte und Preise anlegen, Personen eintragen, dann erfassen. Alle Daten bleiben auf diesem Gerät.</p><div class="chips"><button class="btn pri" data-act="tab" data-v="stamm">Personen &amp; Produkte anlegen</button><button class="btn" data-act="seedProducts">Beispielprodukte anlegen</button><button class="btn" data-act="loadDemo">Demo-Daten laden</button><button class="btn" data-act="pickFile">Backup-Datei laden</button></div><input type="file" id="fileIn" accept=".txt,.json,text/plain,application/json" hidden><p class="small mute" style="margin:10px 0 0">Beispielprodukte haben Platzhalterpreise – unter Verwalten anpassen. Demo-Daten kannst du jederzeit mit „Alles leeren“ löschen.</p></div>';
+    $('#v-erf').innerHTML='<div class="card"><h2>Willkommen</h2><p class="small" style="margin:0 0 10px">Noch keine Personen angelegt. Ablauf: Produkte und Preise anlegen, Personen eintragen, dann erfassen. Alle Daten bleiben auf diesem Gerät.</p><div class="chips"><button class="btn pri" data-act="tab" data-v="stamm">Personen &amp; Produkte anlegen</button><button class="btn" data-act="seedProducts">Beispielprodukte anlegen</button><button class="btn" data-act="restore">Backup einfügen (Text)</button></div><p class="small mute" style="margin:10px 0 0">Beispielprodukte haben Platzhalterpreise – unter Verwalten anpassen.</p></div>';
     return;
   }
   var h=backupNote()+seg('mode','mode',[['single','Einzeln'],['matrix','Matrix (Papierliste nachtragen)']]);
@@ -408,7 +373,7 @@ function fillDiag(){
 }
 function renderStamm(){
   var a=backupAge();
-  var h='<div class="card"><div class="small"><b>Backup-Erinnerung:</b> '+(noBak()?'ausgeblendet':'an')+'. Die Daten liegen nur im Browser – bei gelöschtem Browserprofil sind sie weg.</div><button class="btn" data-act="togBak" style="margin-top:8px">'+(noBak()?'Erinnerung wieder einblenden':'Erinnerung ausblenden')+'</button></div>'+(noBak()?'':'<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
+  var h=('<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
     '<div class="small" style="margin-top:4px"><b>Letztes Backup:</b> '+(a===null?'noch nie':a===0?'heute':'vor '+a+' Tagen')+'</div>'+
     '<button class="btn pri" data-act="backup" style="width:100%;margin-top:10px;padding:11px">💾 Backup sichern (Teilen → In Dateien sichern)</button>'+
     '<p class="small mute" style="margin:8px 0 0">iPhone: Safari → Teilen → <b>Zum Home-Bildschirm</b>. Nur als installierte Web-App räumt iOS die Daten nicht nach 7 Tagen Nichtbenutzung weg. Automatisch Dateien schreiben darf iOS nicht, darum die Backup-Erinnerung.</p></div>');
@@ -429,7 +394,7 @@ function renderStamm(){
   h+='<div class="sec">Jahresabschluss</div><div class="card"><p class="small" style="margin:0 0 10px">Verdichtet die Einzelbuchungen eines vergangenen Jahres zu einer Summe je Person und Produkt. Salden, Abrechnung und Scoreboard (Jahr/Gesamt) bleiben gleich. Danach sind einzelne Buchungen dieses Jahres nicht mehr einzeln löschbar. Vorher heute ein Backup sichern.</p>'+
     (cy.length?cy.map(function(x){return '<div class="row" style="margin:0 0 6px"><div class="grow"><b>'+x[0]+'</b> <span class="small mute">· '+x[1]+' Einzelbuchungen</span></div><button class="btn sm" data-act="closeYear" data-y="'+x[0]+'">Abschließen</button></div>'}).join(''):'<p class="small mute" style="margin:0">Kein vergangenes Jahr mit Einzelbuchungen.</p>')+
     (done.length?'<p class="small mute" style="margin:8px 0 0">Abgeschlossen: '+done.join(', ')+'</p>':'')+'</div>';
-  h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="pickFile">Backup-Datei laden</button><button class="btn" data-act="import">Import (Text)</button><input type="file" id="fileIn" accept=".txt,.json,text/plain,application/json" hidden><button class="btn" data-act="demo">Demo-Daten</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
+  h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="export">Export als Text</button><button class="btn" data-act="import">Import (Text)</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm" data-act="copyJson">Kopieren</button><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
     '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · Daten nur auf diesem Gerät</p></div>';
   h+='<div class="sec">Speicher-Diagnose</div><div class="card"><div id="diag" class="small">prüfe …</div><button class="btn sm" data-act="diag" style="margin-top:8px">Neu prüfen</button></div>';
@@ -572,25 +537,20 @@ var A={
     S.products.push({id:'pr_'+uid(),name:n,price:c,list:$('#newList').value,icon:'🛒',active:true});ui.newList=$('#newList').value;save();render();
   },
   diag:function(){var e=$('#diag');if(e)e.textContent='prüfe …';fillDiag()},
-  pickFile:function(){
-    if((S.people.length||S.entries.length)&&!twice('pickfile','Ersetzt alle aktuellen Daten – nochmal tippen zum Fortfahren'))return;
-    var f=$('#fileIn');if(f){f.value='';f.click()}
-  },
   closeYear:function(b){
     var y=b.dataset.y;
-    if(!noBak()&&backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
+    if(backupAge()!==0){toast('Erst heute ein Backup sichern (Button oben)');return}
     if(!twice('cy'+y,'Nochmal tippen: Jahr '+y+' abschließen'))return;
     var r=closeYear(y);
     if(!r){toast('Abgebrochen: Salden hätten sich geändert');return}
-    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet'+(noBak()?'':' – bitte neues Backup sichern'));
+    save();render();toast(r.n+' Buchungen zu '+r.m+' Summen verdichtet'+' – bitte neues Backup sichern');
   },
-  togBak:function(){S.settings.noBak=!S.settings.noBak;save();render()},
   backup:backupNow,
   seedProducts:function(){
     [['Kaffee',50,'A','☕'],['Twix',70,'A','🍫'],['Mineral',100,'B','💧'],['Cola',120,'B','🥤'],['Bier',150,'B','🍺'],['Pizza',350,'B','🍕']].forEach(function(x){S.products.push({id:'pr_'+uid(),name:x[0],price:x[1],list:x[2],icon:x[3],active:true})});
     save();ui.tab='stamm';render();toast('Beispielprodukte angelegt – Preise anpassen');
   },
-  loadDemo:function(){S=demo();save();render();toast('Demo-Daten geladen')},
+  restore:function(){ui.tab='stamm';ui.exp=true;ui.expFill=false;render()},
   export:function(){ui.exp=true;ui.expFill=true;render()},
   import:function(){ui.exp=true;ui.expFill=false;render()},
   backupCopy:function(){var v=JSON.stringify(S,null,1);
@@ -601,7 +561,6 @@ var A={
     try{var o=JSON.parse($('#jsonbox').value);if(!o.people||!o.products||!o.entries)throw 0;S=normalize(o);save();ui.exp=false;render();toast('Importiert')}
     catch(e){toast('Kein gültiges Backup')}
   },
-  demo:function(){if(!twice('demo','Nochmal tippen: ersetzt alle Daten durch Demo-Daten'))return;S=demo();save();render()},
   wipe:function(){if(!twice('wipe','Nochmal tippen: löscht ALLE Daten'))return;S=normalize({people:[],products:[],entries:[],payments:[],settings:{}});save();render()}
 };
 document.addEventListener('click',function(e){
@@ -610,13 +569,6 @@ document.addEventListener('click',function(e){
 });
 document.addEventListener('input',function(e){if(e.target.id==='q'){ui.q=e.target.value;renderPlist()}});
 document.addEventListener('change',function(e){
-  if(e.target.id==='fileIn'){
-    var file=e.target.files&&e.target.files[0];if(!file)return;
-    var rd=new FileReader();
-    rd.onload=function(){try{var o=JSON.parse(rd.result);if(!o.people||!o.products||!o.entries)throw 0;S=normalize(o);save();ui.tab='erf';ui.exp=false;render();toast('Backup geladen: '+S.people.length+' Personen, '+S.entries.length+' Buchungen')}catch(err){toast('Datei ist kein gültiges Backup')}};
-    rd.onerror=function(){toast('Datei nicht lesbar')};
-    rd.readAsText(file);return;
-  }
   var t=e.target,c=t.dataset.chg;if(!c)return;var v=t.value;
   if(c==='title')S.settings.title=v;
   else if(c==='spare')S.settings.spare=Math.max(0,Math.min(20,parseInt(v,10)||0));
