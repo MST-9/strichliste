@@ -24,5 +24,5 @@ Bei jeder Änderung `VERSION` in `index.html` und `V` in `sw.js` hochzählen, so
 Anforderungen und Roadmap: `SPEC.md`, Arbeitsregeln für Claude Code: `CLAUDE.md`.
 
 ## Windows-PC / Firefox
-Seite normal im Browser öffnen. Die Daten liegen automatisch im Browserspeicher dieses Browsers/Profils (kein Server, kein Login). Unter Verwalten ganz unten zeigt die **Speicher-Diagnose**, was gespeichert ist. Regelmäßig **Export als Text** (oder die Backup-Erinnerung: „Kopieren“) in eine Datei/Mail sichern. Wiederherstellen: Verwalten → Import (Text).
-Alternativ **Export Calc (.ods)** / **Import Calc (.ods)** (Verwalten → Daten): lesbar in LibreOffice Calc, enthält alle Daten (Blätter Personen, Produkte, Buchungen, Zahlungen, Einstellungen) plus Übersicht der offenen Beträge. Beim Import ersetzen die Daten den aktuellen Stand. Ob ein Download aus Browser in the Box erlaubt ist, entscheidet dessen Scanner.
+Seite normal im Browser öffnen. Die Daten liegen automatisch im Browserspeicher dieses Browsers/Profils (kein Server, kein Login). Unter Verwalten ganz unten zeigt die **Speicher-Diagnose**, was gespeichert ist. Backup über „Kopieren“ (Verwalten oder roter Hinweis).
+Sicherung: Verwalten → **Backup kopieren** (Text in die Zwischenablage, dann in Editor/Mail einfügen und speichern) oder der rote Hinweis oben nach 7 Tagen. Wiederherstellen: Verwalten → **Import (Text)**. Es gibt bewusst keinen Datei-Export, weil Downloads in der Firmenumgebung gesperrt sind.
