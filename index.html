@@ -140,7 +140,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.2.9';
+var KEY='strichliste.v3', VERSION='1.3.0';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -165,6 +165,7 @@ function normalize(o){
   o.meta=o.meta||{savedAt:0,lastExport:0};o.payments=o.payments||[];
   o.settings=Object.assign({title:'',orient:'portrait',spare:3,sort:'name'},o.settings||{});
   if(!o.settings.orientSet)o.settings.orient='portrait';
+  if(!o.settings.list3){o.settings.list3=1;o.products.forEach(function(p){if(p.list==='B'&&/^pizza$/i.test(p.name))p.list='C'})}
   o.people.forEach(function(p){if(p.last===undefined){p.last=p.name||'?'}delete p.name;p.rank=p.rank||''});
   return o;
 }
@@ -412,15 +413,15 @@ function sheetHtml(title,list,num){
 }
 function renderPrint(){
   $('#pg').textContent='@page{size:A4 '+S.settings.orient+';margin:0}';
-  var a=activeProds().filter(function(p){return p.list==='A'}),b=activeProds().filter(function(p){return p.list==='B'});
+  var a=activeProds().filter(function(p){return p.list==='A'}),b=activeProds().filter(function(p){return p.list==='B'}),c=activeProds().filter(function(p){return p.list==='C'});
   var sel=function(k,v){return S.settings[k]===v?' selected':''};
   $('#v-print').innerHTML='<div class="noprint">'+
     (inFrame?'<div class="note">⚠️ In dieser Vorschau (Sandbox) ist der Druckdialog gesperrt. Zum echten Drucken die HTML-Datei lokal im Browser öffnen – das Layout unten ist exakt das, was gedruckt wird.</div>':'')+
     '<div class="card"><div class="row" style="gap:8px"><div class="grow"><label class="small mute">Titel / Zeitraum</label><input type="text" data-chg="title" value="'+esc(S.settings.title)+'"></div><div style="width:100px"><label class="small mute">Leerzeilen</label><input type="number" min="0" max="20" data-chg="spare" value="'+esc(S.settings.spare)+'"></div></div>'+
     '<div style="height:8px"></div><div class="row"><div class="grow"><label class="small mute">Format</label><select data-chg="orient"><option value="landscape"'+sel('orient','landscape')+'>A4 quer</option><option value="portrait"'+sel('orient','portrait')+'>A4 hoch</option></select></div><div class="grow"><label class="small mute">Sortierung</label><select data-chg="sort"><option value="name"'+sel('sort','name')+'>Nachname A–Z</option><option value="rank"'+sel('sort','rank')+'>Dienstgrad</option></select></div></div>'+
     ((window.desktop||fsState!=='na'||(window.matchMedia&&matchMedia('(pointer:fine)').matches))?'<button class="btn pri" data-act="print" style="width:100%;margin-top:10px;padding:11px">🖨️ Drucken</button>':'<button class="btn pri" data-act="pdf" style="width:100%;margin-top:10px;padding:11px">📄 PDF erstellen (iPhone: Teilen → Drucken)</button><button class="btn" data-act="print" style="width:100%;margin-top:8px;padding:10px">🖨️ Direkt drucken (Computer)</button>')+
-    '<p class="small mute" style="margin:8px 0 0">App-Version '+VERSION+'. Liste 1 = Produkte mit Zuordnung „Liste 1“ (Standard: Kaffee, Twix). Liste 2 = Rest. Zuordnung unter Verwalten.</p></div></div>'+
-    '<div class="prevwrap">'+sheetHtml('Kaffee & Twix',a,1)+sheetHtml('Getränke & Sonstiges',b,2)+'</div>';
+    '<p class="small mute" style="margin:8px 0 0">App-Version '+VERSION+'. Liste 1 = Produkte mit Zuordnung „Liste 1“ (Standard: Kaffee, Twix). Liste 2 = Rest, Liste 3 = Pizza. Zuordnung unter Verwalten.</p></div></div>'+
+    '<div class="prevwrap">'+sheetHtml('Kaffee & Twix',a,1)+sheetHtml('Getränke & Sonstiges',b,2)+sheetHtml('Pizza',c,3)+'</div>';
 }
 
 function renderStamm(){
@@ -437,7 +438,7 @@ function renderStamm(){
     '<div class="row" style="margin-top:8px"><select id="newRank" style="width:100px">'+rankOpts('')+'</select><input type="text" id="newLast" placeholder="Nachname"><button class="btn pri" data-act="addP">+</button></div></div>';
   h+='<div class="sec">Produkte</div><div class="card"><div class="edit small mute" style="margin-bottom:2px"><span>Name</span><span>Preis €</span><span>Liste</span><span>aktiv</span></div>'+
     S.products.map(function(p){
-      return '<div class="edit"><input type="text" data-chg="prname" data-id="'+p.id+'" value="'+esc(p.name)+'"><input type="number" step="0.05" min="0" data-chg="price" data-id="'+p.id+'" value="'+(p.price/100).toFixed(2)+'"><select data-chg="plist" data-id="'+p.id+'"><option value="A"'+(p.list==='A'?' selected':'')+'>Liste 1</option><option value="B"'+(p.list==='B'?' selected':'')+'>Liste 2</option></select><button class="tg '+(p.active?'on':'')+'" data-act="togPr" data-id="'+p.id+'" aria-label="aktiv"></button></div>';
+      return '<div class="edit"><input type="text" data-chg="prname" data-id="'+p.id+'" value="'+esc(p.name)+'"><input type="number" step="0.05" min="0" data-chg="price" data-id="'+p.id+'" value="'+(p.price/100).toFixed(2)+'"><select data-chg="plist" data-id="'+p.id+'"><option value="A"'+(p.list==='A'?' selected':'')+'>Liste 1</option><option value="B"'+(p.list==='B'?' selected':'')+'>Liste 2</option><option value="C"'+(p.list==='C'?' selected':'')+'>Liste 3</option></select><button class="tg '+(p.active?'on':'')+'" data-act="togPr" data-id="'+p.id+'" aria-label="aktiv"></button></div>';
     }).join('')+
     '<div class="row" style="margin-top:8px"><input type="text" id="newPr" placeholder="Neues Produkt"><input type="number" id="newPrice" step="0.05" min="0" placeholder="€" style="width:90px"><button class="btn pri" data-act="addPr">+</button></div>'+
     '<p class="small mute" style="margin:8px 0 0">Preisänderungen gelten nur für neue Striche – alte Buchungen behalten ihren Preis.</p></div>';
@@ -489,7 +490,7 @@ function buildPdf(){
   var land=S.settings.orient==='landscape',W=land?841.89:595.28,H=land?595.28:841.89,M=28;
   var rows=activePeople().map(lbl),sp=Math.max(0,parseInt(S.settings.spare,10)||0);for(var i=0;i<sp;i++)rows.push('');
   var prods=activeProds();
-  var lists=[['Kaffee & Twix',prods.filter(function(p){return p.list==='A'}),1],['Getränke & Sonstiges',prods.filter(function(p){return p.list==='B'}),2]].filter(function(l){return l[1].length});
+  var lists=[['Kaffee & Twix',prods.filter(function(p){return p.list==='A'}),1],['Getränke & Sonstiges',prods.filter(function(p){return p.list==='B'}),2],['Pizza',prods.filter(function(p){return p.list==='C'}),3]].filter(function(l){return l[1].length});
   var NAMEW=Math.min(150,W*.26),PAYW=land?110:80,HEADH=34,ROWH=28.3,YTOP=H-M-26,pages=[];
   var f2=function(n){return n.toFixed(2)};
   var txt=function(x,y,t,sz,b){return 'BT /F'+(b?2:1)+' '+sz+' Tf '+f2(x)+' '+f2(y)+' Td '+pdfStr(t)+' Tj ET\n'};

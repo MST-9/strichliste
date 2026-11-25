@@ -20,7 +20,7 @@ Aktueller Stand: `index.html` (Single-File-PWA, IndexedDB + localStorage-Spiegel
 Beträge immer als Integer-Cent. Datum als `YYYY-MM-DD` (lokal).
 
 - Person: `id, rank (Dienstgrad-Kürzel, '' = zivil), last (Nachname), active` – Anzeige überall als „Dienstgrad Nachname“, z. B. „OWm Gruber“. Keine Vornamen.
-- Product: `id, name, price (Cent), list ('A'|'B'), icon, active`
+- Product: `id, name, price (Cent), list ('A'|'B'|'C'), icon, active`
 - Entry (Konsum): `id, personId, productId, qty, price (Preis-Snapshot zum Buchungszeitpunkt), date`
 - Payment: `id, personId, amount (Cent), date`
 - Settings: `title (Zeitraum/Titel für Ausdruck), orient, spareRows, sort ('name'|'rank')`
@@ -46,7 +46,7 @@ Regeln:
 - Später: Teilzahlungen, Zahlungserinnerung als Text zum Kopieren.
 
 ### Druck
-- Liste 1 = Produkte mit `list = 'A'` (Standard: Kaffee, Twix), Liste 2 = alle anderen aktiven.
+- Liste 1 = Produkte mit `list = 'A'` (Standard: Kaffee, Twix), Liste 2 = `list = 'B'`, Liste 3 = `list = 'C'` (Pizza).
 - Zeilen: aktive Personen alphabetisch + konfigurierbare Leerzeilen. Spalten: ein breites Feld je Produkt (Preis im Header) + Spalte „Notiz“ am Ende.
 - Eigene Seite pro Liste, Kopfzeile wiederholt sich bei Seitenumbruch, A4 hoch (Standard) oder quer wählbar, Titel/Zeitraum frei.
 - Umsetzung über Print-CSS (`@media print`, `@page`), keine PDF-Bibliothek in v1. Zeilenhöhe in mm.
