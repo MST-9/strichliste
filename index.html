@@ -140,7 +140,7 @@ table.st .nt{width:30mm}
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.2.8';
+var KEY='strichliste.v3', VERSION='1.2.9';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -155,7 +155,7 @@ var val=function(e){return e.amt!==undefined?e.amt:e.q*e.price};
 var S=null, ui={tab:'erf',mode:'single',q:'',sheet:null,per:'month',met:'eur',anon:false,exp:false};
 
 /* ---------- Dienstgrade (aufsteigend; Abkürzungen bitte gegenprüfen) ---------- */
-var RANKS=[['','ohne / zivil'],['Rekr','Rekrut'],['Gfr','Gefreiter'],['Kpl','Korporal'],['Zgsfhr','Zugsführer'],['Wm','Wachtmeister'],['OWm','Oberwachtmeister'],['StWm','Stabswachtmeister'],['OStWm','Oberstabswachtmeister'],['OStv','Offiziersstellvertreter'],['VzLt','Vizeleutnant'],['Fhr','Fähnrich'],['Lt','Leutnant'],['Olt','Oberleutnant'],['Hptm','Hauptmann'],['Mjr','Major'],['Obstlt','Oberstleutnant'],['Obst','Oberst'],['Brig','Brigadier'],['GenMjr','Generalmajor'],['GenLt','Generalleutnant'],['Gen','General']];
+var RANKS=[['','ohne / zivil'],['Rekr','Rekrut'],['Gfr','Gefreiter'],['Kpl','Korporal'],['Zgsfhr','Zugsführer'],['Wm','Wachtmeister'],['OWm','Oberwachtmeister'],['StWm','Stabswachtmeister'],['OStWm','Oberstabswachtmeister'],['OStv','Offiziersstellvertreter'],['VzLt','Vizeleutnant'],['Fhr','Fähnrich'],['Lt','Leutnant'],['Olt','Oberleutnant'],['Hptm','Hauptmann'],['Mjr','Major'],['Obstlt','Oberstleutnant'],['Obst','Oberst'],['Obst d.G.','Oberst des Generalstabsdienstes'],['ObstA','Oberstarzt'],['Brig','Brigadier'],['GenMjr','Generalmajor'],['GenLt','Generalleutnant'],['Gen','General']];
 var rankIdx=function(r){for(var i=0;i<RANKS.length;i++)if(RANKS[i][0]===r)return i;return 0};
 var lbl=function(p){return (p.rank?p.rank+' ':'')+p.last};
 var rankOpts=function(sel){return RANKS.map(function(r){return '<option value="'+r[0]+'"'+(r[0]===sel?' selected':'')+'>'+(r[0]?r[0]+' – ':'')+r[1]+'</option>'}).join('')};

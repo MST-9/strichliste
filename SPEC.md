@@ -27,7 +27,7 @@ Beträge immer als Integer-Cent. Datum als `YYYY-MM-DD` (lokal).
 - Meta: `savedAt, lastExport, closedYears`
 - Verdichteter Eintrag (Jahresabschluss): Entry mit `arch: true, amt (Cent-Summe), d: 'YYYY-12-31'`; `val(e) = amt ?? qty × price`
 
-Dienstgrade (aufsteigend, Kürzel vor Verwendung gegen offizielle Liste prüfen): Rekr, Gfr, Kpl, Zgsfhr, Wm, OWm, StWm, OStWm, OStv, VzLt, Fhr (Fähnrich, nur Offiziersanwärter), Lt, Olt, Hptm, Mjr, Obstlt, Obst, Brig, GenMjr, GenLt, Gen. Sortierung: Nachname A–Z oder Dienstgrad absteigend.
+Dienstgrade (aufsteigend, Kürzel vor Verwendung gegen offizielle Liste prüfen): Rekr, Gfr, Kpl, Zgsfhr, Wm, OWm, StWm, OStWm, OStv, VzLt, Fhr (Fähnrich, nur Offiziersanwärter), Lt, Olt, Hptm, Mjr, Obstlt, Obst, Obst d.G., ObstA, Brig, GenMjr, GenLt, Gen. Sortierung: Nachname A–Z oder Dienstgrad absteigend.
 
 Regeln:
 - Offener Saldo = Σ(qty × price) − Σ(payments). Negativ = Guthaben.
