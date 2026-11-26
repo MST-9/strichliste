@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='2.1.1';
+var KEY='strichliste.v3', VERSION='2.2.0';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -360,7 +360,7 @@ function renderSheet(){
     (ui.alt?'<div class="card"><div class="small mute" style="margin:0 0 8px">Bisheriger Stand, gebucht auf das Datum oben. Produkte: Anzahl je Produkt. Betrag: bisher offener Geldbetrag ohne Produkte (z. B. alte Schulden).</div>'+activeProds().map(function(x){return '<div class="row" style="margin:0 0 6px"><span class="grow">'+esc(x.name)+' <span class="small mute">'+money(x.price)+'</span></span><input type="number" inputmode="numeric" min="0" class="altq" data-pr="'+x.id+'" style="width:90px"></div>'}).join('')+'<div class="row" style="margin:0 0 8px"><span class="grow">Betrag €</span><input type="text" inputmode="decimal" id="altEur" style="width:90px" placeholder="0,00"></div><button class="btn pri" data-act="altBook" style="width:100%">Altstand buchen</button></div>':'')+
     activeProds().map(function(x){
       var t=todayQty(p.id,x.id);
-      return '<div class="prodrow"><div class="grow"><b>'+esc(x.name)+'</b><div class="small mute">'+money(x.price)+'</div></div><div class="stp"><button data-act="dec" data-pr="'+x.id+'"'+(t?'':' disabled style="opacity:.35"')+'>−</button><b>'+t+'</b><button class="plus" data-act="inc" data-pr="'+x.id+'">+</button></div></div>';
+      return '<div class="prodrow"><div class="grow"><b>'+esc(x.name)+'</b><div class="small mute">'+money(x.price)+'</div></div><div class="stp"><button data-act="dec" data-pr="'+x.id+'"'+(t?'':' disabled style="opacity:.35"')+'>−</button><input type="number" inputmode="numeric" min="0" class="qin" data-pr="'+x.id+'" value="'+t+'" style="width:64px;text-align:center;font-weight:700;padding:9px 4px"><button class="plus" data-act="inc" data-pr="'+x.id+'">+</button></div></div>';
     }).join('')+
     '<div class="sec">Guthaben</div><div class="card"><div class="row"><input type="text" inputmode="decimal" id="cred" placeholder="Betrag €"><button class="btn pri" data-act="credit" data-id="'+p.id+'">Guthaben buchen</button></div>'+(bonusCfg().pr?'<div class="small mute" style="margin-top:6px">Kaffee-Bonus: '+(bonusCount(p.id)%bonusCfg().every)+' / '+bonusCfg().every+' · '+(p.bonusN||0)+'× erhalten</div>':'')+'</div>'+
     '<div class="sec">Letzte Buchungen</div><div class="hist">'+(hist.map(function(e){var x=prod(e.pr)||{name:e.alt?'Altstand (Betrag)':'?'};return '<div><span>'+esc(x.name)+(e.alt?'':' ×'+e.q)+' · '+(e.arch?'Jahr '+e.d.slice(0,4)+' (Summe)':fmtD(e.d))+'</span><span>'+money(val(e))+(e.arch?'':' <button class="btn sm dng" data-act="delEntry" data-id="'+e.id+'">✕</button>')+'</span></div>'}).join('')||'<span class="mute">Noch nichts.</span>')+'</div>';
@@ -603,7 +603,7 @@ document.addEventListener('click',function(e){
   if(fsState==='needs'&&fh&&!fsAsked&&!e.target.closest('[data-act="fsNew"],[data-act="fsOpen"]'))fsRe();
   var b=e.target.closest('[data-act]');if(b&&A[b.dataset.act]&&!b.disabled){if(!persisted)askPersist();A[b.dataset.act](b)}
 });
-document.addEventListener('change',function(e){if(e.target.id==='sDate'){ui.sdate=e.target.value||'';renderSheet()}});
+document.addEventListener('change',function(e){if(e.target.classList&&e.target.classList.contains('qin')&&ui.sheet){var n=parseInt(e.target.value,10);n=n>=0?Math.min(n,9999):0;var d=n-todayQty(ui.sheet,e.target.dataset.pr);if(d){book(ui.sheet,e.target.dataset.pr,d,sDay());applyBonus(ui.sheet);save()}renderSheet();renderPlist();return}if(e.target.id==='sDate'){ui.sdate=e.target.value||'';renderSheet()}});
 document.addEventListener('input',function(e){if(e.target.id==='q'){ui.q=e.target.value;renderPlist()}});
 document.addEventListener('change',function(e){
   var t=e.target,c=t.dataset.chg;if(!c)return;var v=t.value;
