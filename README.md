@@ -29,7 +29,7 @@ Sicherung: Verwalten → **Backup kopieren** (Text in die Zwischenablage, dann i
 
 
 ## Guthaben, Bonus, Nachtragen
-Im Personen-Dialog: Datum ändern = alte Striche nachtragen; „Guthaben buchen“ = Einzahlung (Guthaben). Kaffee-Bonus (Standard 200 Stück → 10 €) unter Verwalten einstellbar, wird automatisch als Guthaben gebucht.
+Im Personen-Dialog: „Altstand nachtragen“ = bisherige Produkte (Anzahl) und/oder bisheriger Geldbetrag auf das gewählte Datum. Datum ändern = alte Striche nachtragen; „Guthaben buchen“ = Einzahlung (Guthaben). Kaffee-Bonus (Standard 200 Stück → 10 €) unter Verwalten einstellbar, wird automatisch als Guthaben gebucht.
 
 ## Datei-Speicher (Chrome/Edge)
 Unter Verwalten → Datei-Speicher: „Neue Datei anlegen“ (`strichliste-daten.json`, am besten im selben Ordner wie die HTML-Datei). Danach wird bei jeder Änderung geschrieben. Nach jedem Browser-Neustart einmal „Wieder verbinden“ bzw. ein Klick + Erlauben. Eine vorhandene Datei wird nie blind überschrieben (neuerer Stand gewinnt, unlesbare Datei bleibt unangetastet). Firefox kann das nicht – dort weiter „Kopieren“/Import (Text).

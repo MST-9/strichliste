@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.9.0';
+var KEY='strichliste.v3', VERSION='2.0.0';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -356,12 +356,14 @@ function renderSheet(){
   var hist=S.entries.filter(function(e){return e.p===p.id}).sort(function(a,c){return c.t-a.t}).slice(0,6);
   $('#sheetm').innerHTML='<div class="row" style="margin-bottom:10px">'+av(p)+'<div class="grow"><b style="font-size:18px">'+esc(lbl(p))+'</b><div class="small mute">Offen: <span class="amt">'+money(b)+'</span></div></div><button class="btn" data-act="closeSheet">Fertig</button></div>'+
     '<div class="card" style="padding:9px 11px"><label class="small mute">Datum der Striche'+(sDay()===dayKey(Date.now())?' (heute)':' – <b style="color:var(--warn)">nachgetragen</b>')+'</label><input type="date" id="sDate" value="'+sDay()+'"></div>'+
+    '<button class="btn" data-act="altToggle" style="width:100%;margin:0 0 10px">'+(ui.alt?'▲ Altstand schließen':'📒 Altstand nachtragen (bisherige Produkte / Betrag)')+'</button>'+
+    (ui.alt?'<div class="card"><div class="small mute" style="margin:0 0 8px">Bisheriger Stand, gebucht auf das Datum oben. Produkte: Anzahl je Produkt. Betrag: bisher offener Geldbetrag ohne Produkte (z. B. alte Schulden).</div>'+activeProds().map(function(x){return '<div class="row" style="margin:0 0 6px"><span class="grow">'+esc(x.name)+' <span class="small mute">'+money(x.price)+'</span></span><input type="number" inputmode="numeric" min="0" class="altq" data-pr="'+x.id+'" style="width:90px"></div>'}).join('')+'<div class="row" style="margin:0 0 8px"><span class="grow">Betrag €</span><input type="text" inputmode="decimal" id="altEur" style="width:90px" placeholder="0,00"></div><button class="btn pri" data-act="altBook" style="width:100%">Altstand buchen</button></div>':'')+
     activeProds().map(function(x){
       var t=todayQty(p.id,x.id);
       return '<div class="prodrow"><div class="grow"><b>'+esc(x.name)+'</b><div class="small mute">'+money(x.price)+'</div></div><div class="stp"><button data-act="dec" data-pr="'+x.id+'"'+(t?'':' disabled style="opacity:.35"')+'>−</button><b>'+t+'</b><button class="plus" data-act="inc" data-pr="'+x.id+'">+</button></div></div>';
     }).join('')+
     '<div class="sec">Guthaben</div><div class="card"><div class="row"><input type="text" inputmode="decimal" id="cred" placeholder="Betrag €"><button class="btn pri" data-act="credit" data-id="'+p.id+'">Guthaben buchen</button></div>'+(bonusCfg().pr?'<div class="small mute" style="margin-top:6px">Kaffee-Bonus: '+(bonusCount(p.id)%bonusCfg().every)+' / '+bonusCfg().every+' · '+(p.bonusN||0)+'× erhalten</div>':'')+'</div>'+
-    '<div class="sec">Letzte Buchungen</div><div class="hist">'+(hist.map(function(e){var x=prod(e.pr)||{name:'?'};return '<div><span>'+esc(x.name)+' ×'+e.q+' · '+(e.arch?'Jahr '+e.d.slice(0,4)+' (Summe)':fmtD(e.d))+'</span><span>'+money(val(e))+(e.arch?'':' <button class="btn sm dng" data-act="delEntry" data-id="'+e.id+'">✕</button>')+'</span></div>'}).join('')||'<span class="mute">Noch nichts.</span>')+'</div>';
+    '<div class="sec">Letzte Buchungen</div><div class="hist">'+(hist.map(function(e){var x=prod(e.pr)||{name:e.alt?'Altstand (Betrag)':'?'};return '<div><span>'+esc(x.name)+(e.alt?'':' ×'+e.q)+' · '+(e.arch?'Jahr '+e.d.slice(0,4)+' (Summe)':fmtD(e.d))+'</span><span>'+money(val(e))+(e.arch?'':' <button class="btn sm dng" data-act="delEntry" data-id="'+e.id+'">✕</button>')+'</span></div>'}).join('')||'<span class="mute">Noch nichts.</span>')+'</div>';
   ov.classList.add('on');
 }
 
@@ -381,7 +383,7 @@ function renderScore(){
   var r=ranking(ui.per,ui.met),max=r.length?r[0].v:1;
   var fmt=function(v){return ui.met==='eur'?money(v):v+'×'};
   var tot=0,qty={};
-  S.entries.forEach(function(e){if(!inPer(e,ui.per))return;tot+=val(e);qty[e.pr]=(qty[e.pr]||0)+e.q});
+  S.entries.forEach(function(e){if(!inPer(e,ui.per))return;tot+=val(e);if(e.pr)qty[e.pr]=(qty[e.pr]||0)+e.q});
   var top=Object.keys(qty).sort(function(a,b){return qty[b]-qty[a]})[0];
   var h=seg('per','per',[['month','Monat'],['year','Jahr'],['all','Gesamt']])+seg('met','met',[['eur','Ausgaben €'],['qty','Stückzahl']]);
   h+='<div class="kpis"><div><b>'+money(tot)+'</b><span>Umsatz</span></div><div><b>'+(r.length?money(Math.round(tot/r.length)):'–')+'</b><span>Ø pro Person</span></div><div><b>'+(top?esc(prod(top).name):'–')+'</b><span>Top-Produkt</span></div></div>';
@@ -564,9 +566,17 @@ var A={
   per:function(b){ui.per=b.dataset.k;render()},
   met:function(b){ui.met=b.dataset.k;render()},
   anon:function(){ui.anon=!ui.anon;render()},
-  openP:function(b){ui.sheet=b.dataset.id;ui.sdate='';renderSheet()},
+  openP:function(b){ui.sheet=b.dataset.id;ui.sdate='';ui.alt=false;renderSheet()},
+  altToggle:function(){ui.alt=!ui.alt;renderSheet()},
+  altBook:function(){
+    var d=sDay(),n=0,tot=0;
+    document.querySelectorAll('#sheetm .altq').forEach(function(i){var q=parseInt(i.value,10);if(q>0){book(ui.sheet,i.dataset.pr,q,d);n+=q;var x=prod(i.dataset.pr);tot+=q*x.price}});
+    var c=Math.round(parseFloat(($('#altEur').value||'').replace(',','.'))*100);
+    if(c>0){S.entries.push({id:uid(),p:ui.sheet,pr:'',q:0,price:0,amt:c,d:d,t:new Date(d+'T12:00:00').getTime(),alt:true});tot+=c}
+    if(!n&&!(c>0)){toast('Nichts eingetragen');return}
+    applyBonus(ui.sheet);save();ui.alt=false;renderSheet();renderPlist();toast('Altstand gebucht: '+money(tot))},
   credit:function(b){var c=Math.round(parseFloat(($('#cred').value||'').replace(',','.'))*100);if(!(c>0)){toast('Betrag eingeben');return}S.payments.push({id:uid(),p:b.dataset.id,amt:c,d:dayKey(Date.now()),t:Date.now(),kind:'credit'});save();renderSheet();renderPlist();toast('Guthaben '+money(c)+' gebucht')},
-  closeSheet:function(){ui.sheet=null;ui.sdate='';renderSheet();renderPlist()},
+  closeSheet:function(){ui.sheet=null;ui.sdate='';ui.alt=false;renderSheet();renderPlist()},
   inc:function(b){book(ui.sheet,b.dataset.pr,1,sDay());applyBonus(ui.sheet);save();renderSheet();renderPlist()},
   dec:function(b){book(ui.sheet,b.dataset.pr,-1,sDay());save();renderSheet();renderPlist()},
   delEntry:function(b){S.entries=S.entries.filter(function(e){return e.id!==b.dataset.id});save();renderSheet();renderPlist()},
