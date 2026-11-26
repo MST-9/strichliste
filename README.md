@@ -26,3 +26,7 @@ Anforderungen und Roadmap: `SPEC.md`, Arbeitsregeln für Claude Code: `CLAUDE.md
 ## Windows-PC / Firefox
 Seite normal im Browser öffnen. Die Daten liegen automatisch im Browserspeicher dieses Browsers/Profils (kein Server, kein Login). Unter Verwalten ganz unten zeigt die **Speicher-Diagnose**, was gespeichert ist. Backup über „Kopieren“ (Verwalten oder roter Hinweis).
 Sicherung: Verwalten → **Backup kopieren** (Text in die Zwischenablage, dann in Editor/Mail einfügen und speichern) oder der rote Hinweis oben nach 7 Tagen. Wiederherstellen: Verwalten → **Import (Text)**. Es gibt bewusst keinen Datei-Export, weil Downloads in der Firmenumgebung gesperrt sind.
+
+
+## Datei-Speicher (Chrome/Edge)
+Unter Verwalten → Datei-Speicher: „Neue Datei anlegen“ (`strichliste-daten.json`, am besten im selben Ordner wie die HTML-Datei). Danach wird bei jeder Änderung geschrieben. Nach jedem Browser-Neustart einmal „Wieder verbinden“ bzw. ein Klick + Erlauben. Eine vorhandene Datei wird nie blind überschrieben (neuerer Stand gewinnt, unlesbare Datei bleibt unangetastet). Firefox kann das nicht – dort weiter „Kopieren“/Import (Text).

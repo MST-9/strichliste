@@ -11,7 +11,7 @@
 <title>Strichliste</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
-<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'%3E%3Crect width='192' height='192' rx='36' fill='%232f3b1a'/%3E%3Cg stroke='%23e8e4cf' stroke-width='14' stroke-linecap='round'%3E%3Cline x1='54' y1='50' x2='54' y2='142'/%3E%3Cline x1='84' y1='50' x2='84' y2='142'/%3E%3Cline x1='114' y1='50' x2='114' y2='142'/%3E%3Cline x1='144' y1='50' x2='144' y2='142'/%3E%3Cline x1='38' y1='126' x2='156' y2='66'/%3E%3C/g%3E%3C/svg%3E">
 <style id="pg"></style>
 <style>
 :root{--bg:#ecebe0;--card:#fff;--ink:#1f2418;--mute:#5f6552;--line:#d6d3c0;--acc:#4b5d2a;--acc-d:#2f3b1a;--accbg:#e1e8cf;--warn:#b3122b;--sand:#e8e4cf;--r:12px}
@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.7.0';
+var KEY='strichliste.v3', VERSION='1.8.0';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -183,18 +183,74 @@ function save(){
   S.meta.savedAt=Date.now();
   try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){lsOk=false}
   idb('readwrite',function(st){return st.put(JSON.parse(JSON.stringify(S)),'state3')}).then(function(){idbOk=true;badge()},function(){idbOk=false;badge()});
+  if(fsState==='ready')fsWrite();
   badge();
 }
-function backupAge(){return S&&S.meta.lastExport?Math.floor((Date.now()-S.meta.lastExport)/864e5):null}
+function backupAge(){if(!S)return null;var t=Math.max(S.meta.lastExport||0,fsState==='ready'?fsOkAt:0);return t?Math.floor((Date.now()-t)/864e5):null}
 function badge(){
   var b=$('#stor');if(!b||!S)return;
   b.style.display='';
   var ok=lsOk||idbOk,a=backupAge(),stale=a===null||a>7;
+  if(fsState==='ready'){b.textContent='Datei ✓';b.classList.remove('warn');return}
   b.textContent=!ok?'⚠ nur Sitzung':'Backup: '+(a===null?'nie':a===0?'heute':'vor '+a+' T');
   b.classList.toggle('warn',!ok||stale);
 }
 function askPersist(){try{if(navigator.storage&&navigator.storage.persist){navigator.storage.persist().then(function(ok){persisted=ok;badge()},function(){})}}catch(e){}}
 
+/* ---------- Datei-Speicher (nur Chrome/Edge): eine JSON-Datei, bei jeder Änderung geschrieben ---------- */
+var FN='strichliste-daten.json',fh=null,fsOkAt=0,fsBusy=false,fsDirty=false,fsAsked=false,fsState=(window.showSaveFilePicker&&window.showOpenFilePicker)?'none':'na';
+function fsWrite(){
+  if(!fh||fsState!=='ready')return;
+  if(fsBusy){fsDirty=true;return}
+  fsBusy=true;fsDirty=false;var t=JSON.stringify(S,null,1);
+  fh.createWritable().then(function(w){return w.write(t).then(function(){return w.close()})}).then(function(){
+    fsBusy=false;fsOkAt=Date.now();if(fsDirty)fsWrite();else badge();
+  },function(){fsBusy=false;fsState='needs';badge();render();toast('Datei nicht beschreibbar – unter Verwalten neu verbinden')});
+}
+function fsAttach(h){
+  return h.getFile().then(function(f){return f.text()}).then(function(txt){
+    var o=null;
+    if(txt&&txt.trim()){try{o=JSON.parse(txt);if(!(o.people&&o.products&&o.entries))throw 0;o=normalize(o)}catch(e){fsState='err';toast('Datei unlesbar – nichts überschrieben');return}}
+    var empty=!S.people.length&&!S.products.length&&!S.entries.length,fa=o?(o.meta.savedAt||0):0,sa=S.meta.savedAt||0;
+    if(o&&(empty||fa>sa)){S=o;toast('Daten aus Datei geladen')}
+    else if(o&&fa<sa&&(o.people.length||o.entries.length)&&!confirm('Die Datei ist älter als der Stand im Browser und wird überschrieben. Fortfahren?')){fsState=fh?'needs':'none';return}
+    fh=h;fsState='ready';fsAsked=true;
+    idb('readwrite',function(st){try{return st.put(h,'fileHandle')}catch(e){}}).catch(function(){});
+    save();
+  });
+}
+function fsInit(){
+  if(fsState==='na'||fsState==='ready')return;
+  idb('readonly',function(st){return st.get('fileHandle')}).then(function(h){
+    if(!h||!h.queryPermission)return;
+    fh=h;
+    return h.queryPermission({mode:'readwrite'}).then(function(r){
+      if(r==='granted')return fsAttach(h).then(render);
+      fsState='needs';badge();render();
+    });
+  }).catch(function(){});
+}
+function fsRe(){
+  fsAsked=true;
+  fh.requestPermission({mode:'readwrite'}).then(function(r){
+    if(r==='granted')return fsAttach(fh).then(render);
+    toast('Zugriff nicht erlaubt');
+  }).catch(function(){toast('Datei nicht erreichbar – neu verbinden')});
+}
+function fsPick(p){
+  p.then(function(r){var h=r.length?r[0]:r;return (h.requestPermission?h.requestPermission({mode:'readwrite'}):Promise.resolve('granted')).then(function(q){if(q!=='granted'){toast('Zugriff nicht erlaubt');return}return fsAttach(h).then(render)})},
+    function(e){if(e&&e.name!=='AbortError')toast('Fehler: '+(e.name||e))});
+}
+function fileCard(){
+  var h='<div class="sec">Datei-Speicher</div><div class="card"><div class="small">';
+  if(fsState==='na')return h+'Dieser Browser kann keine Datei beschreiben (nur Chrome/Edge). Backup weiter per „Kopieren“.</div></div>';
+  var b=function(a,t,pri){return '<button class="btn'+(pri?' pri':'')+'" data-act="'+a+'">'+t+'</button>'};
+  if(fsState==='ready')h+='<b>Verbunden:</b> <code>'+esc(fh.name)+'</code> ✓ – wird bei jeder Änderung geschrieben. Die Datei im selben Ordner wie diese HTML-Datei ablegen.</div><div class="chips" style="margin-top:8px">'+b('fsNew','Andere Datei anlegen')+b('fsOpen','Andere Datei wählen')+'</div>';
+  else if(fsState==='needs')h+='<span style="color:var(--warn)"><b>Datei „'+esc(fh&&fh.name||FN)+'“ muss neu freigegeben werden</b></span> (Browser verlangt das nach jedem Neustart).</div><div class="chips" style="margin-top:8px">'+b('fsRe','Wieder verbinden',1)+'</div>';
+  else if(fsState==='err')h+='<span style="color:var(--warn)">Datei unlesbar – nichts überschrieben.</span></div><div class="chips" style="margin-top:8px">'+b('fsNew','Neue Datei anlegen')+b('fsOpen','Andere Datei wählen')+'</div>';
+  else h+='Noch keine Datei. Daten liegen nur im Browser.</div><div class="chips" style="margin-top:8px">'+b('fsNew','Neue Datei anlegen',1)+b('fsOpen','Vorhandene Datei wählen')+'</div><p class="small mute" style="margin:8px 0 0">Name: <code>'+FN+'</code>, am besten im selben Ordner wie diese HTML-Datei. Eine vorhandene Datei wird nie blind überschrieben (neuerer Stand gewinnt).</p>';
+  return h+'</div>';
+}
 
 /* ---------- Logik ---------- */
 function cmpP(a,b){if(S.settings.sort==='rank'){var d=rankIdx(b.rank)-rankIdx(a.rank);if(d)return d}return a.last.localeCompare(b.last,'de')||rankIdx(b.rank)-rankIdx(a.rank)}
@@ -248,6 +304,8 @@ function seg(act,key,items){return '<div class="seg">'+items.map(function(i){ret
 function av(p){return '<span class="av">'+esc(p.rank||'·')+'</span>'}
 function backupNote(){
   var a=backupAge();
+  if(fsState==='ready')return '';
+  if(fsState==='needs')return '<div class="note red">📁 Datei-Speicher getrennt. <button class="btn sm pri" data-act="fsRe">Wieder verbinden</button></div>';
   if(!S.entries.length||(a!==null&&a<=7))return '';
   return '<div class="note red">💾 Letztes Backup: <b>'+(a===null?'nie':'vor '+a+' Tagen')+'</b>. <button class="btn sm pri" data-act="backupCopy">Kopieren</button></div>';
 }
@@ -394,6 +452,7 @@ function renderStamm(){
   h+='<div class="sec">Jahresabschluss</div><div class="card"><p class="small" style="margin:0 0 10px">Verdichtet die Einzelbuchungen eines vergangenen Jahres zu einer Summe je Person und Produkt. Salden, Abrechnung und Scoreboard (Jahr/Gesamt) bleiben gleich. Danach sind einzelne Buchungen dieses Jahres nicht mehr einzeln löschbar. Vorher heute ein Backup sichern.</p>'+
     (cy.length?cy.map(function(x){return '<div class="row" style="margin:0 0 6px"><div class="grow"><b>'+x[0]+'</b> <span class="small mute">· '+x[1]+' Einzelbuchungen</span></div><button class="btn sm" data-act="closeYear" data-y="'+x[0]+'">Abschließen</button></div>'}).join(''):'<p class="small mute" style="margin:0">Kein vergangenes Jahr mit Einzelbuchungen.</p>')+
     (done.length?'<p class="small mute" style="margin:8px 0 0">Abgeschlossen: '+done.join(', ')+'</p>':'')+'</div>';
+  h+=fileCard();
   h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="import">Import (Text)</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
     '<p class="small mute" style="margin:10px 0 0">Version '+VERSION+' · Daten nur auf diesem Gerät</p></div>';
@@ -520,6 +579,9 @@ var A={
     if(!n||!(c>=0)){toast('Name und Preis angeben');return}
     S.products.push({id:'pr_'+uid(),name:n,price:c,list:$('#newList').value,icon:'🛒',active:true});ui.newList=$('#newList').value;save();render();
   },
+  fsNew:function(){fsPick(window.showSaveFilePicker({suggestedName:FN,types:[{description:'JSON',accept:{'application/json':['.json']}}]}))},
+  fsOpen:function(){fsPick(window.showOpenFilePicker({types:[{description:'JSON',accept:{'application/json':['.json']}}]}))},
+  fsRe:function(){if(fh)fsRe()},
   diag:function(){var e=$('#diag');if(e)e.textContent='prüfe …';fillDiag()},
   closeYear:function(b){
     var y=b.dataset.y;
@@ -547,6 +609,7 @@ var A={
 };
 document.addEventListener('click',function(e){
   if(e.target.id==='ov'){A.closeSheet();return}
+  if(fsState==='needs'&&fh&&!fsAsked&&!e.target.closest('[data-act="fsNew"],[data-act="fsOpen"]'))fsRe();
   var b=e.target.closest('[data-act]');if(b&&A[b.dataset.act]&&!b.disabled){if(!persisted)askPersist();A[b.dataset.act](b)}
 });
 document.addEventListener('input',function(e){if(e.target.id==='q'){ui.q=e.target.value;renderPlist()}});
@@ -575,12 +638,12 @@ S=lsLoad();
 if(S){render()}
 var started=false;
 function emptyState(){return normalize({people:[],products:[],entries:[],payments:[],settings:{title:new Date().toLocaleDateString('de-AT',{month:'long',year:'numeric'})}})}
-function fallback(){if(started)return;started=true;if(!S){S=emptyState();save()}render()}
+function fallback(){if(started)return;started=true;if(!S){S=emptyState();save()}render();fsInit()}
 idb('readonly',function(st){return st.get('state3')}).then(function(o){
   idbOk=true;
   if(o&&o.people&&o.products&&o.entries){
     o=normalize(o);
-    if(!S||(o.meta.savedAt||0)>(S.meta.savedAt||0)){var restored=!S;S=o;started=true;render();if(restored)toast('Daten aus interner Sicherung wiederhergestellt');return}
+    if(!S||(o.meta.savedAt||0)>(S.meta.savedAt||0)){var restored=!S;S=o;started=true;render();fsInit();if(restored)toast('Daten aus interner Sicherung wiederhergestellt');return}
   }
   fallback();
 },function(){idbOk=false;fallback()});
