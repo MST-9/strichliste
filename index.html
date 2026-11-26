@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='2.0.0';
+var KEY='strichliste.v3', VERSION='2.0.1';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -435,6 +435,7 @@ function fillDiag(){
   var pr=location.protocol,seg=(location.pathname||'').split('/').pop();
   L.push('Adresse: <b>'+esc(pr==='file:'?'file:// (lokale Datei …/'+seg+')':pr+'//'+location.host)+'</b>');
   L.push('Zugriff (Origin): '+esc(String(location.origin)));
+  L.push('Datei-Speicher: <b>'+(fsState==='ready'?'verbunden ✓</b> („'+esc(fh.name)+'“, zuletzt geschrieben '+(fsOkAt?ts(fsOkAt):'noch nicht')+')':fsState==='needs'?'getrennt – neu verbinden</b>':fsState==='na'?'nicht unterstützt (Browser)</b>':fsState==='err'?'Datei unlesbar</b>':'nicht verbunden</b>'));
   var ls=null;try{var x=localStorage.getItem(KEY);ls=x?JSON.parse(x):null}catch(e){L.push('localStorage: <b>nicht verfügbar</b>')}
   if(ls)L.push('localStorage: <b>ja</b>, Stand '+ts(ls.meta&&ls.meta.savedAt)+', '+ls.people.length+' Personen, '+ls.entries.length+' Buchungen');else L.push('localStorage: leer');
   var done=function(){el.innerHTML=L.map(function(l){return '<div>'+l+'</div>'}).join('')};
@@ -445,7 +446,7 @@ function fillDiag(){
 }
 function renderStamm(){
   var a=backupAge();
-  var h=('<div class="card"><div class="small"><b>Speicher:</b> '+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
+  var h=('<div class="card"><div class="small"><b>Speicher:</b> '+(fsState==='ready'?'Datei ✓ (Browser-Speicher zusätzlich als Zweitkopie) · ':'')+((lsOk||idbOk)?'lokal im Gerät ✓':'<span style="color:var(--warn)">nicht verfügbar – nur Sitzung</span>')+' · IndexedDB '+(idbOk===null?'…':idbOk?'✓':'✗')+' · dauerhaft: '+(persisted===null?'unbekannt':persisted?'ja ✓':'nicht garantiert')+'</div>'+
     '<div class="small" style="margin-top:4px"><b>Letztes Backup:</b> '+(a===null?'noch nie':a===0?'heute':'vor '+a+' Tagen')+'</div>'+
     '<button class="btn pri" data-act="backupCopy" style="width:100%;margin-top:10px;padding:11px">📋 Backup kopieren (dann in Editor/Mail einfügen)</button>'+
     '<p class="small mute" style="margin:8px 0 0">iPhone: Safari → Teilen → <b>Zum Home-Bildschirm</b>. Nur als installierte Web-App räumt iOS die Daten nicht nach 7 Tagen Nichtbenutzung weg. Darum die Backup-Erinnerung.</p></div>');
