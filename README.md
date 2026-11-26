@@ -28,5 +28,8 @@ Seite normal im Browser öffnen. Die Daten liegen automatisch im Browserspeicher
 Sicherung: Verwalten → **Backup kopieren** (Text in die Zwischenablage, dann in Editor/Mail einfügen und speichern) oder der rote Hinweis oben nach 7 Tagen. Wiederherstellen: Verwalten → **Import (Text)**. Es gibt bewusst keinen Datei-Export, weil Downloads in der Firmenumgebung gesperrt sind.
 
 
+## Guthaben, Bonus, Nachtragen
+Im Personen-Dialog: Datum ändern = alte Striche nachtragen; „Guthaben buchen“ = Einzahlung (Guthaben). Kaffee-Bonus (Standard 200 Stück → 10 €) unter Verwalten einstellbar, wird automatisch als Guthaben gebucht.
+
 ## Datei-Speicher (Chrome/Edge)
 Unter Verwalten → Datei-Speicher: „Neue Datei anlegen“ (`strichliste-daten.json`, am besten im selben Ordner wie die HTML-Datei). Danach wird bei jeder Änderung geschrieben. Nach jedem Browser-Neustart einmal „Wieder verbinden“ bzw. ein Klick + Erlauben. Eine vorhandene Datei wird nie blind überschrieben (neuerer Stand gewinnt, unlesbare Datei bleibt unangetastet). Firefox kann das nicht – dort weiter „Kopieren“/Import (Text).

@@ -142,7 +142,7 @@ table.st td.oc b{display:block;width:10mm;height:calc(var(--rh,10mm) - .8mm);lin
 <script>
 (function(){
 'use strict';
-var KEY='strichliste.v3', VERSION='1.8.0';
+var KEY='strichliste.v3', VERSION='1.9.0';
 var lsOk=true, idbOk=null, persisted=null;
 var inFrame=false;try{inFrame=window.self!==window.top}catch(e){inFrame=true}
 var $=function(s,r){return (r||document).querySelector(s)};
@@ -259,7 +259,17 @@ function activeProds(){return S.products.filter(function(p){return p.active})}
 function person(id){return S.people.find(function(p){return p.id===id})}
 function prod(id){return S.products.find(function(p){return p.id===id})}
 function openBal(pid){var s=0;S.entries.forEach(function(e){if(e.p===pid)s+=val(e)});S.payments.forEach(function(p){if(p.p===pid)s-=p.amt});return s}
-function todayQty(pid,prid){var d=dayKey(Date.now()),q=0;S.entries.forEach(function(e){if(e.p===pid&&e.pr===prid&&e.d===d)q+=e.q});return q}
+function sDay(){return ui.sdate||dayKey(Date.now())}
+/* Kaffee-Bonus: je volle N Stück (lebenslang, inkl. Jahresabschluss-Summen) werden X Cent Guthaben gutgeschrieben; Zähler je Person, nie rückwärts */
+function bonusCfg(){var b=S.settings.bonus;if(!b){var k=S.products.find(function(p){return /kaffee/i.test(p.name)});b=S.settings.bonus={pr:k?k.id:'',every:200,cents:1000}}return b}
+function bonusCount(pid){var c=bonusCfg(),q=0;if(!c.pr)return 0;S.entries.forEach(function(e){if(e.p===pid&&e.pr===c.pr)q+=e.q});return q}
+function applyBonus(pid){
+  var c=bonusCfg(),p=person(pid);if(!p||!c.pr||!(c.every>0)||!(c.cents>0))return 0;
+  var due=Math.floor(bonusCount(pid)/c.every),n=0;p.bonusN=p.bonusN||0;
+  while(p.bonusN<due){p.bonusN++;n++;S.payments.push({id:uid(),p:pid,amt:c.cents,d:dayKey(Date.now()),t:Date.now()+n,kind:'bonus'})}
+  if(n)toast('🎁 Bonus: '+money(c.cents*n)+' Guthaben für '+lbl(p));return n;
+}
+function todayQty(pid,prid){var d=sDay(),q=0;S.entries.forEach(function(e){if(e.p===pid&&e.pr===prid&&e.d===d)q+=e.q});return q}
 function inPer(e,per){if(per==='all')return true;var k=dayKey(Date.now());return e.d.indexOf(per==='month'?k.slice(0,7):k.slice(0,4))===0}
 function ranking(per,met){
   var m={};S.entries.forEach(function(e){if(!inPer(e,per))return;m[e.p]=(m[e.p]||0)+(met==='eur'?val(e):e.q)});
@@ -345,10 +355,12 @@ function renderSheet(){
   var b=openBal(p.id);
   var hist=S.entries.filter(function(e){return e.p===p.id}).sort(function(a,c){return c.t-a.t}).slice(0,6);
   $('#sheetm').innerHTML='<div class="row" style="margin-bottom:10px">'+av(p)+'<div class="grow"><b style="font-size:18px">'+esc(lbl(p))+'</b><div class="small mute">Offen: <span class="amt">'+money(b)+'</span></div></div><button class="btn" data-act="closeSheet">Fertig</button></div>'+
+    '<div class="card" style="padding:9px 11px"><label class="small mute">Datum der Striche'+(sDay()===dayKey(Date.now())?' (heute)':' – <b style="color:var(--warn)">nachgetragen</b>')+'</label><input type="date" id="sDate" value="'+sDay()+'"></div>'+
     activeProds().map(function(x){
       var t=todayQty(p.id,x.id);
       return '<div class="prodrow"><div class="grow"><b>'+esc(x.name)+'</b><div class="small mute">'+money(x.price)+'</div></div><div class="stp"><button data-act="dec" data-pr="'+x.id+'"'+(t?'':' disabled style="opacity:.35"')+'>−</button><b>'+t+'</b><button class="plus" data-act="inc" data-pr="'+x.id+'">+</button></div></div>';
     }).join('')+
+    '<div class="sec">Guthaben</div><div class="card"><div class="row"><input type="text" inputmode="decimal" id="cred" placeholder="Betrag €"><button class="btn pri" data-act="credit" data-id="'+p.id+'">Guthaben buchen</button></div>'+(bonusCfg().pr?'<div class="small mute" style="margin-top:6px">Kaffee-Bonus: '+(bonusCount(p.id)%bonusCfg().every)+' / '+bonusCfg().every+' · '+(p.bonusN||0)+'× erhalten</div>':'')+'</div>'+
     '<div class="sec">Letzte Buchungen</div><div class="hist">'+(hist.map(function(e){var x=prod(e.pr)||{name:'?'};return '<div><span>'+esc(x.name)+' ×'+e.q+' · '+(e.arch?'Jahr '+e.d.slice(0,4)+' (Summe)':fmtD(e.d))+'</span><span>'+money(val(e))+(e.arch?'':' <button class="btn sm dng" data-act="delEntry" data-id="'+e.id+'">✕</button>')+'</span></div>'}).join('')||'<span class="mute">Noch nichts.</span>')+'</div>';
   ov.classList.add('on');
 }
@@ -361,7 +373,7 @@ function renderAbr(){
     '<div class="sec" style="margin-top:0">Offene Beträge</div>'+(rows.map(function(x){
       return '<div class="card row" style="padding:10px 12px;margin-bottom:8px">'+av(x.p)+'<div class="grow"><b>'+esc(x.p.last)+'</b>'+(x.p.active?'':' <span class="small mute">(inaktiv)</span>')+'</div><span class="amt '+(x.b<0?'neg':'')+'">'+(x.b<0?'Guthaben ':'')+money(Math.abs(x.b))+'</span>'+(x.b>0?'<button class="btn pri sm" data-act="pay" data-id="'+x.p.id+'">Bezahlt</button>':'')+'</div>';
     }).join('')||'<p class="mute">Alles beglichen 🎉</p>')+
-    '<div class="sec">Letzte Zahlungen</div><div class="card hist">'+(pays.map(function(p){var n=person(p.p);return '<div><span>'+esc(n?lbl(n):'?')+' · '+fmtD(p.d)+'</span><span>'+money(p.amt)+' <button class="btn sm dng" data-act="delPay" data-id="'+p.id+'">✕</button></span></div>'}).join('')||'<span class="mute">Keine.</span>')+'</div>';
+    '<div class="sec">Letzte Zahlungen</div><div class="card hist">'+(pays.map(function(p){var n=person(p.p);return '<div><span>'+esc(n?lbl(n):'?')+' · '+fmtD(p.d)+(p.kind==='bonus'?' · 🎁 Bonus':p.kind==='credit'?' · Guthaben':'')+'</span><span>'+money(p.amt)+' <button class="btn sm dng" data-act="delPay" data-id="'+p.id+'">✕</button></span></div>'}).join('')||'<span class="mute">Keine.</span>')+'</div>';
 }
 
 function nm(pid,anon){var p=person(pid);if(!p)return '?';return anon?((p.rank?p.rank+' ':'')+p.last[0]+'.'):lbl(p)}
@@ -452,6 +464,8 @@ function renderStamm(){
   h+='<div class="sec">Jahresabschluss</div><div class="card"><p class="small" style="margin:0 0 10px">Verdichtet die Einzelbuchungen eines vergangenen Jahres zu einer Summe je Person und Produkt. Salden, Abrechnung und Scoreboard (Jahr/Gesamt) bleiben gleich. Danach sind einzelne Buchungen dieses Jahres nicht mehr einzeln löschbar. Vorher heute ein Backup sichern.</p>'+
     (cy.length?cy.map(function(x){return '<div class="row" style="margin:0 0 6px"><div class="grow"><b>'+x[0]+'</b> <span class="small mute">· '+x[1]+' Einzelbuchungen</span></div><button class="btn sm" data-act="closeYear" data-y="'+x[0]+'">Abschließen</button></div>'}).join(''):'<p class="small mute" style="margin:0">Kein vergangenes Jahr mit Einzelbuchungen.</p>')+
     (done.length?'<p class="small mute" style="margin:8px 0 0">Abgeschlossen: '+done.join(', ')+'</p>':'')+'</div>';
+  var bc=bonusCfg();
+  h+='<div class="sec">Kaffee-Bonus</div><div class="card"><div class="small mute" style="margin:0 0 8px">Je volle Anzahl Stück des Produkts wird automatisch Guthaben gutgeschrieben (zählt alle Buchungen der Person, auch abgeschlossene Jahre). Bereits erreichte Schwellen werden beim nächsten Strich nachgebucht.</div><div class="row" style="gap:6px"><select data-chg="bonuspr"><option value="">aus</option>'+S.products.map(function(x){return '<option value="'+x.id+'"'+(bc.pr===x.id?' selected':'')+'>'+esc(x.name)+'</option>'}).join('')+'</select><input type="number" min="1" style="width:80px" data-chg="bonusevery" value="'+bc.every+'"><span class="small">Stück →</span><input type="number" min="0" step="0.5" style="width:80px" data-chg="bonuseur" value="'+(bc.cents/100)+'"><span class="small">€</span></div></div>';
   h+=fileCard();
   h+='<div class="sec">Daten</div><div class="card"><div class="chips"><button class="btn" data-act="import">Import (Text)</button><button class="btn dng" data-act="wipe">Alles leeren</button></div>'+
     (ui.exp?'<textarea id="jsonbox" rows="7" style="margin-top:10px;font:12px monospace" placeholder="JSON hier einfügen, dann „Importieren“"></textarea><div class="chips" style="margin-top:8px"><button class="btn sm pri" data-act="doImport">Importieren</button></div>':'')+
@@ -550,15 +564,16 @@ var A={
   per:function(b){ui.per=b.dataset.k;render()},
   met:function(b){ui.met=b.dataset.k;render()},
   anon:function(){ui.anon=!ui.anon;render()},
-  openP:function(b){ui.sheet=b.dataset.id;renderSheet()},
-  closeSheet:function(){ui.sheet=null;renderSheet();renderPlist()},
-  inc:function(b){book(ui.sheet,b.dataset.pr,1,dayKey(Date.now()));save();renderSheet();renderPlist()},
-  dec:function(b){book(ui.sheet,b.dataset.pr,-1,dayKey(Date.now()));save();renderSheet();renderPlist()},
+  openP:function(b){ui.sheet=b.dataset.id;ui.sdate='';renderSheet()},
+  credit:function(b){var c=Math.round(parseFloat(($('#cred').value||'').replace(',','.'))*100);if(!(c>0)){toast('Betrag eingeben');return}S.payments.push({id:uid(),p:b.dataset.id,amt:c,d:dayKey(Date.now()),t:Date.now(),kind:'credit'});save();renderSheet();renderPlist();toast('Guthaben '+money(c)+' gebucht')},
+  closeSheet:function(){ui.sheet=null;ui.sdate='';renderSheet();renderPlist()},
+  inc:function(b){book(ui.sheet,b.dataset.pr,1,sDay());applyBonus(ui.sheet);save();renderSheet();renderPlist()},
+  dec:function(b){book(ui.sheet,b.dataset.pr,-1,sDay());save();renderSheet();renderPlist()},
   delEntry:function(b){S.entries=S.entries.filter(function(e){return e.id!==b.dataset.id});save();renderSheet();renderPlist()},
   mbook:function(){
     var d=$('#mDate').value||dayKey(Date.now()),n=0;
     document.querySelectorAll('#v-erf .mtx input').forEach(function(i){var q=parseInt(i.value,10);if(q>0){book(i.dataset.p,i.dataset.pr,q,d);n+=q;i.value=''}});
-    save();toast(n?n+' Striche gebucht':'Nichts eingetragen');
+    S.people.forEach(function(p){applyBonus(p.id)});save();toast(n?n+' Striche gebucht':'Nichts eingetragen');
   },
   pay:function(b){
     var p=person(b.dataset.id),bal=openBal(b.dataset.id);
@@ -612,6 +627,7 @@ document.addEventListener('click',function(e){
   if(fsState==='needs'&&fh&&!fsAsked&&!e.target.closest('[data-act="fsNew"],[data-act="fsOpen"]'))fsRe();
   var b=e.target.closest('[data-act]');if(b&&A[b.dataset.act]&&!b.disabled){if(!persisted)askPersist();A[b.dataset.act](b)}
 });
+document.addEventListener('change',function(e){if(e.target.id==='sDate'){ui.sdate=e.target.value||'';renderSheet()}});
 document.addEventListener('input',function(e){if(e.target.id==='q'){ui.q=e.target.value;renderPlist()}});
 document.addEventListener('change',function(e){
   var t=e.target,c=t.dataset.chg;if(!c)return;var v=t.value;
@@ -626,6 +642,9 @@ document.addEventListener('change',function(e){
   else if(c==='picon')prod(t.dataset.id).icon=v.trim()||'🛒';
   else if(c==='price'){var n=Math.round(parseFloat(v.replace(',','.'))*100);if(n>=0)prod(t.dataset.id).price=n}
   else if(c==='plist')prod(t.dataset.id).list=v;
+  else if(c==='bonuspr')bonusCfg().pr=v;
+  else if(c==='bonusevery')bonusCfg().every=Math.max(1,parseInt(v,10)||200);
+  else if(c==='bonuseur')bonusCfg().cents=Math.max(0,Math.round(parseFloat(v.replace(',','.'))*100)||0);
   save();render();
 });
 document.addEventListener('visibilitychange',function(){if(document.hidden&&S)save()});
